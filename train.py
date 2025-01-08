@@ -36,7 +36,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
 
-from env_test import BinaryHologramEnv
+from env import BinaryHologramEnv
 
 IPS = 256  #이미지 픽셀 사이즈
 CH = 8  #채널
@@ -277,7 +277,7 @@ env = BinaryHologramEnv(
 )
 
 # 저장할 폴더 경로 설정
-save_dir = "./testenv_ppo_MlpPolicy_models/"  # 모델 저장 디렉토리
+save_dir = "./ppo_MlpPolicy_models/"  # 모델 저장 디렉토리
 os.makedirs(save_dir, exist_ok=True)  # 디렉토리가 없으면 생성
 
 # 모델 저장 경로 설정
@@ -306,9 +306,9 @@ else:
         max_grad_norm=0.5,
         ent_coef=0.01,
         tensorboard_log="./ppo_MultiInputPolicy/",
-        policy_kwargs={
-            "net_arch": [dict(pi=[128, 128], vf=[256, 128, 64])],
-        },
+        #policy_kwargs={
+        #    "net_arch": [dict(pi=[128, 128], vf=[256, 128, 64])],
+        #},
     )
 
 # 콜백 설정
