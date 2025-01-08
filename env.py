@@ -1,12 +1,3 @@
-from logger import setup_logger
-
-# 로거 설정
-log_file = setup_logger()
-
-# 테스트 출력
-print("이 메시지는 콘솔과 파일에 동시에 기록됩니다.")
-logging.info("이 메시지도 로그에 기록됩니다.")
-
 import os
 import glob
 import shutil
