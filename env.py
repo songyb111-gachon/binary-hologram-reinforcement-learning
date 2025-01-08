@@ -151,7 +151,7 @@ class BinaryHologramEnv(gym.Env):
         col = pixel_index % IPS
 
         # 상태 변경
-        pre_flip_value = self.state[0, channel, row, col]
+        pre_model_Value = self.state[0, channel, row, col]
         self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
         self.state_record[0, channel, row, col] = self.state_record[0, channel, row, col] + 1
 
@@ -195,7 +195,7 @@ class BinaryHologramEnv(gym.Env):
                     f"Step: {self.steps:<6}"
                     f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                     f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                    f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[0, channel, row, col]}"
+                    f"\nPre model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                     f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                 )
 
@@ -205,7 +205,7 @@ class BinaryHologramEnv(gym.Env):
                 "psnr_after": psnr_after,
                 "psnr_change": psnr_change,
                 "psnr_diff": psnr_diff,
-                "pre_flip_value": pre_flip_value,
+                "pre_model_Value": pre_model_Value,
                 "state_before": self.state.copy(),  # 행동 이전 상태
                 "state_after": None,  # 실패한 경우에는 상태를 업데이트하지 않음
                 "observation_before": self.observation.copy(),  # 행동 이전 관찰값
@@ -230,7 +230,7 @@ class BinaryHologramEnv(gym.Env):
                 f"Step: {self.steps:<6}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[0, channel, row, col]}"
+                f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             )
 
@@ -246,7 +246,7 @@ class BinaryHologramEnv(gym.Env):
                 f"Step: {self.steps:<6} | Time: {current_time}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[0, channel, row, col]}"
+                f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             )
             self.psnr_sustained_steps += 1
@@ -267,7 +267,7 @@ class BinaryHologramEnv(gym.Env):
                 f"Step: {self.steps:<6} | Time: {current_time}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[0, channel, row, col]}"
+                f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             )
             # Goal-Reaching Reward or Penalty 함수
@@ -285,7 +285,7 @@ class BinaryHologramEnv(gym.Env):
             "psnr_after": psnr_after,
             "psnr_change": psnr_change,
             "psnr_diff": psnr_diff,
-            "pre_flip_value": pre_flip_value,
+            "pre_model_Value": pre_model_Value,
             "state_before": self.state.copy(),  # 행동 이전 상태
             "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
             "observation_before": self.observation.copy(),  # 행동 이전 관찰값
