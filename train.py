@@ -321,14 +321,14 @@ callback = CallbackList([reward_logging_callback, stop_callback])
 ppo_model.learn(total_timesteps=1000000000, callback=callback)
 
 # 모델 저장
-print(f"Start model saving at {save_dir}")
 current_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+print(f"Start {current_date}_model saving at {save_dir}")
 ppo_model_save_path = os.path.join(save_dir, f"ppo_MlpPolicy_{current_date}.zip")
 ppo_model.save(ppo_model_save_path)
 print(f"PPO Model saved at {save_dir}")
 
 # 최신 모델 업데이트
-print(f"Start model updating at {save_dir}")
+print(f"Start latest_model updating at {save_dir}")
 ppo_model_latest_path = os.path.join(save_dir, "ppo_MlpPolicy_latest.zip")
 
 # 최신 모델을 덮어쓰기 위해 기존 모델 파일 복사
