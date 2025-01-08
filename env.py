@@ -145,7 +145,7 @@ class BinaryHologramEnv(gym.Env):
         psnr_before = self.previous_psnr
 
         # 행동을 기반으로 픽셀 좌표 계산
-        channel = (action // (IPS * IPS)) % CH  # CH 범위를 초과하지 않도록 제한
+        channel = action // (IPS * IPS)
         pixel_index = action % (IPS * IPS)
         row = pixel_index // IPS
         col = pixel_index % IPS
