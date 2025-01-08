@@ -1,7 +1,9 @@
 dataset/
 dataset10/
 torchOptics/
-.ipynb_checkpoints
+.ipynb_checkpoints/
+result/
+result_v/
 
 # 일반적인 OS 파일
 .DS_Store                # macOS
