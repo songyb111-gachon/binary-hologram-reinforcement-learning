@@ -103,12 +103,10 @@ class BinaryHologramEnv(gym.Env):
         self.flip_count = 0
         self.psnr_sustained_steps = 0
 
-        # Ensure observation shape is (CH, IPS, IPS)
-        self.observation = model_output.squeeze(0).cpu().numpy()  # (CH, IPS, IPS)
         self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
 
         # 시뮬레이션 전 binary 형상을 (1, 채널, 픽셀, 픽셀)로 복원
-        binary = torch.tensor(self.state, dtype=torch.float32).unsqueeze(0).cuda()  # (1, CH, IPS, IPS)
+        binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
 
         # 시뮬레이션
@@ -120,14 +118,11 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        # target_image_np와 result를 채널 차원(CH=8)으로 확장
-        target_image_np = np.repeat(self.target_image.squeeze(0).cpu().numpy(), CH, axis=0)  # 모양: [CH, IPS, IPS]
-        result_np = np.repeat(result.squeeze(0).cpu().numpy(), CH, axis=0)  # 모양: [CH, IPS, IPS]
+        # target_image와 result를 그대로 사용 (확장하지 않음)
+        target_image_np = self.target_image.cpu().numpy()
+        result_np = result.cpu().numpy()
 
-        # 모든 관찰값을 스택으로 결합
-        combined_observation = np.stack(
-            [self.state, self.observation, target_image_np, result_np], axis=0
-        )  # 최종 모양: [4, CH, IPS, IPS]
+        obs = {"recon_image": result_np, "target_image": target_image_np}
 
         current_time = datetime.now().strftime("%H:%M:%S")
         print(
@@ -135,7 +130,7 @@ class BinaryHologramEnv(gym.Env):
             f"\nInitial MSE: {mse:.6f}\033[0m"
         )
 
-        return combined_observation, {"state": self.state}
+        return obs, {"state": self.state}
 
 
     def step(self, action, z=2e-3):
@@ -156,20 +151,18 @@ class BinaryHologramEnv(gym.Env):
         self.flip_count += 1  # 플립 증가
 
         # 현재 상태로 새로운 시뮬레이션 수행
-        binary_after = torch.tensor(self.state, dtype=torch.float32).unsqueeze(0).cuda()
+        binary_after = torch.tensor(self.state, dtype=torch.float32).cuda()
         binary_after = tt.Tensor(binary_after, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})
         sim_after = tt.simulate(binary_after, z).abs()**2
         result_after = torch.mean(sim_after, dim=1, keepdim=True)
         psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
 
         # 시뮬레이션 결과를 NumPy로 변환
-        result_np = np.repeat(result_after.squeeze(0).cpu().numpy(), CH, axis=0)
-        target_image_np = np.repeat(self.target_image.squeeze(0).cpu().numpy(), CH, axis=0)
+        target_image_np = self.target_image.cpu().numpy()
+        result_np = result_after.cpu().numpy()
 
         # Combined observation 생성
-        combined_observation = np.stack(
-            [self.state, self.observation, target_image_np, result_np], axis=0
-        )
+        combined_observation = {"recon_image": result_np, "target_image": target_image_np}
 
         # PSNR 변화량 계산
         psnr_change = psnr_after - psnr_before
@@ -178,7 +171,7 @@ class BinaryHologramEnv(gym.Env):
         # psnr_change가 음수인 경우 상태 롤백 수행
         if psnr_change < 0:
 
-            failed_observation = combined_observation
+            failed_observation = {"recon_image": result_np, "target_image": target_image_np}
 
             failed_action = action
             failed_reward = psnr_change * rw  # PSNR 변화량(psnr_change)에 기반한 보상
@@ -297,7 +290,7 @@ class BinaryHologramEnv(gym.Env):
             "state_before": self.state.copy(),  # 행동 이전 상태
             "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
             "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-            "observation_after": combined_observation if psnr_change >= 0 else None,  # 행동 성공 시 관찰값
+            "observation_after": combined_observation if psnr_change >= 0 else None,  # 행동 성s공 시 관찰값
             "failed_action": action if psnr_change < 0 else None,  # 실패한 행동
             "flip_count": self.flip_count,  # 현재까지의 플립 횟수
             "success_ratio": success_ratio,
