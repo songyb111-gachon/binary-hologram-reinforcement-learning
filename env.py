@@ -151,7 +151,7 @@ class BinaryHologramEnv(gym.Env):
         col = pixel_index % IPS
 
         # 상태 변경
-        pre_model_Value = self.state[0, channel, row, col]
+        pre_model_Value = self.observation[0, channel, row, col]
         self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
         self.state_record[0, channel, row, col] = self.state_record[0, channel, row, col] + 1
 
