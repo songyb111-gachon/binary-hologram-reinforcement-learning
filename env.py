@@ -39,6 +39,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 관찰 공간 정보
         self.observation_space = spaces.Dict({
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8), #이걸 기반으로 마스크를 해 말아
             "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
             "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
@@ -61,6 +62,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 학습 상태 초기화
         self.state = None
+        self.state_record = None
         self.observation = None
         self.steps = 0
         self.psnr_sustained_steps = 0
@@ -109,8 +111,8 @@ class BinaryHologramEnv(gym.Env):
         self.psnr_sustained_steps = 0
 
         self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
+        self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
-        # 시뮬레이션 전 binary 형상을 (1, 채널, 픽셀, 픽셀)로 복원
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
 
@@ -123,12 +125,13 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
+        state_record = self.state_record
         state = self.state
         pre_model = self.observation
         target_image_np = self.target_image.cpu().numpy()
         result_np = result.cpu().numpy()
 
-        obs = {"state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
+        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
         current_time = datetime.now().strftime("%H:%M:%S")
         print(
@@ -150,6 +153,7 @@ class BinaryHologramEnv(gym.Env):
         # 상태 변경
         pre_flip_value = self.state[0, channel, row, col]
         self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
+        self.state_record[0, channel, row, col] = self.state_record[0, channel, row, col] + 1
 
         self.flip_count += 1  # 플립 증가
 
@@ -161,13 +165,13 @@ class BinaryHologramEnv(gym.Env):
         psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
 
         # 시뮬레이션 결과를 NumPy로 변환
-        target_image_np = self.target_image.cpu().numpy()
-        result_np = result_after.cpu().numpy()
+        state_record = self.state_record
         state = self.state
         pre_model = self.observation
+        target_image_np = self.target_image.cpu().numpy()
+        result_np = result_after.cpu().numpy()
 
-        obs = {"state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
-
+        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
         # PSNR 변화량 계산
         psnr_change = psnr_after - psnr_before
         psnr_diff = psnr_after - self.initial_psnr
