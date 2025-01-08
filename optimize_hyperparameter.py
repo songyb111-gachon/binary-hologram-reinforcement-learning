@@ -248,8 +248,8 @@ class StopOnEpisodeCallback(BaseCallback):
         return True  # 학습 계속
 
 batch_size = 1
-target_dir = 'dataset/'
-#target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
+#target_dir = 'dataset/'
+target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
 valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
 meta = {'wl': (515e-9), 'dx': (7.56e-6, 7.56e-6)}  # 메타 정보
 padding = 0
@@ -316,7 +316,7 @@ def optimize_hyperparameters(env, n_trials=100, n_timesteps=10000):
         trial_env = VecNormalize(trial_env, norm_obs=True, norm_reward=True, clip_obs=10.0)
 
         model = PPO(
-            "MlpPolicy",
+            "MultiInputPolicy",
             trial_env,
             verbose=0,
             n_steps=n_steps,

@@ -36,7 +36,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
 
-from env import BinaryHologramEnv
+from env_test import BinaryHologramEnv
 
 IPS = 256  #이미지 픽셀 사이즈
 CH = 8  #채널
@@ -248,8 +248,8 @@ class StopOnEpisodeCallback(BaseCallback):
         return True  # 학습 계속
 
 batch_size = 1
-target_dir = 'dataset/'
-#target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
+#target_dir = 'dataset/'
+target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
 valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
 meta = {'wl': (515e-9), 'dx': (7.56e-6, 7.56e-6)}  # 메타 정보
 padding = 0
@@ -277,7 +277,7 @@ env = BinaryHologramEnv(
 )
 
 # 저장할 폴더 경로 설정
-save_dir = "./ppo_MlpPolicy_models/"  # 모델 저장 디렉토리
+save_dir = "./testenv_ppo_MlpPolicy_models/"  # 모델 저장 디렉토리
 os.makedirs(save_dir, exist_ok=True)  # 디렉토리가 없으면 생성
 
 # 모델 저장 경로 설정
@@ -293,7 +293,7 @@ else:
         print(f"Warning: PPO model not found at {ppo_model_path}. Starting training from scratch.")
     print("Starting training from scratch.")
     ppo_model = PPO(
-        "MlpPolicy",
+        "MultiInputPolicy",  # MlpPolicy 대신 MultiInputPolicy 사용
         env,
         verbose=2,
         n_steps=512,
@@ -305,9 +305,9 @@ else:
         vf_coef=0.5,
         max_grad_norm=0.5,
         ent_coef=0.01,
-        tensorboard_log="./ppo_MlpPolicy/",
+        tensorboard_log="./ppo_MultiInputPolicy/",
         policy_kwargs={
-        "net_arch": [dict(pi=[128, 128], vf=[256, 128, 64])],
+            "net_arch": [dict(pi=[128, 128], vf=[256, 128, 64])],
         },
     )
 

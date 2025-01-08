@@ -37,8 +37,14 @@ class BinaryHologramEnv(gym.Env):
     def __init__(self, target_function, trainloader, max_steps=10000, T_PSNR=30, T_steps=1, T_PSNR_DIFF=0.1):
         super(BinaryHologramEnv, self).__init__()
 
-        # 관찰 공간: (4, CH, IPS, IPS)
-        self.observation_space = spaces.Box(low=0, high=1, shape=(4, CH, IPS, IPS), dtype=np.float32)
+        # 관찰 공간 정보
+        self.observation_space = spaces.Dict({
+            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
+            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
+            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+        })
+
 
         # 행동 공간: 픽셀 하나를 선택하는 인덱스 (CH * IPS * IPS)
         self.num_pixels = CH * IPS * IPS
@@ -103,12 +109,10 @@ class BinaryHologramEnv(gym.Env):
         self.flip_count = 0
         self.psnr_sustained_steps = 0
 
-        # Ensure observation shape is (CH, IPS, IPS)
-        self.observation = model_output.squeeze(0).cpu().numpy()  # (CH, IPS, IPS)
         self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
 
         # 시뮬레이션 전 binary 형상을 (1, 채널, 픽셀, 픽셀)로 복원
-        binary = torch.tensor(self.state, dtype=torch.float32).unsqueeze(0).cuda()  # (1, CH, IPS, IPS)
+        binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
 
         # 시뮬레이션
@@ -120,14 +124,12 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        # target_image_np와 result를 채널 차원(CH=8)으로 확장
-        target_image_np = np.repeat(self.target_image.squeeze(0).cpu().numpy(), CH, axis=0)  # 모양: [CH, IPS, IPS]
-        result_np = np.repeat(result.squeeze(0).cpu().numpy(), CH, axis=0)  # 모양: [CH, IPS, IPS]
+        state = self.state
+        pre_model = self.observation
+        target_image_np = self.target_image.cpu().numpy()
+        result_np = result.cpu().numpy()
 
-        # 모든 관찰값을 스택으로 결합
-        combined_observation = np.stack(
-            [self.state, self.observation, target_image_np, result_np], axis=0
-        )  # 최종 모양: [4, CH, IPS, IPS]
+        obs = {"state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
         current_time = datetime.now().strftime("%H:%M:%S")
         print(
@@ -135,60 +137,52 @@ class BinaryHologramEnv(gym.Env):
             f"\nInitial MSE: {mse:.6f}\033[0m"
         )
 
-        return combined_observation, {"state": self.state}
-
+        return obs, {"state": self.state}
 
     def step(self, action, z=2e-3):
-        # 행동 전 PSNR 계산
         psnr_before = self.previous_psnr
 
-        # 행동을 기반으로 픽셀 좌표 계산Inv
-        channel = action // (IPS * IPS)
+        # 행동을 기반으로 픽셀 좌표 계산
+        channel = (action // (IPS * IPS)) % CH  # CH 범위를 초과하지 않도록 제한
         pixel_index = action % (IPS * IPS)
         row = pixel_index // IPS
         col = pixel_index % IPS
 
-        # 플립 전 모델 예측값 가져오기
-        pre_flip_value = self.observation[channel, row, col]
-
         # 상태 변경
-        self.state[channel, row, col] = 1 - self.state[channel, row, col]  # (1->0 1-1=0) (0->1 1-0=1)
+        pre_flip_value = self.state[0, channel, row, col]
+        self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
+
         self.flip_count += 1  # 플립 증가
 
-        # 현재 상태로 새로운 시뮬레이션 수행
-        binary_after = torch.tensor(self.state, dtype=torch.float32).unsqueeze(0).cuda()
+        # 시뮬레이션 수행
+        binary_after = torch.tensor(self.state, dtype=torch.float32).cuda()
         binary_after = tt.Tensor(binary_after, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})
         sim_after = tt.simulate(binary_after, z).abs()**2
         result_after = torch.mean(sim_after, dim=1, keepdim=True)
         psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
 
         # 시뮬레이션 결과를 NumPy로 변환
-        result_np = np.repeat(result_after.squeeze(0).cpu().numpy(), CH, axis=0)
-        target_image_np = np.repeat(self.target_image.squeeze(0).cpu().numpy(), CH, axis=0)
+        target_image_np = self.target_image.cpu().numpy()
+        result_np = result_after.cpu().numpy()
+        state = self.state
+        pre_model = self.observation
 
-        # Combined observation 생성
-        combined_observation = np.stack(
-            [self.state, self.observation, target_image_np, result_np], axis=0
-        )
+        obs = {"state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
         # PSNR 변화량 계산
         psnr_change = psnr_after - psnr_before
         psnr_diff = psnr_after - self.initial_psnr
 
+        # 보상 계산
+        reward = psnr_change * rw  # PSNR 변화량(psnr_change)에 기반한 보상
+
+        self.steps += 1
+
         # psnr_change가 음수인 경우 상태 롤백 수행
         if psnr_change < 0:
 
-            failed_observation = combined_observation
-
-            failed_action = action
-            failed_reward = psnr_change * rw  # PSNR 변화량(psnr_change)에 기반한 보상
-
-            # 플립된 픽셀을 원래대로 복구
-            self.state[channel, row, col] = 1 - self.state[channel, row, col]
+            self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
             self.flip_count -= 1
-
-            # 스텝 증가
-            self.steps += 1
 
             success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
 
@@ -197,8 +191,8 @@ class BinaryHologramEnv(gym.Env):
                 print(
                     f"Step: {self.steps:<6}"
                     f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                    f"\nReward: {failed_reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                    f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[channel, row, col]}"
+                    f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
+                    f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                     f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                 )
 
@@ -212,25 +206,20 @@ class BinaryHologramEnv(gym.Env):
                 "state_before": self.state.copy(),  # 행동 이전 상태
                 "state_after": None,  # 실패한 경우에는 상태를 업데이트하지 않음
                 "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-                "observation_after": None,  # 실패한 경우 관찰값 업데이트 없음
-                "failed_action": failed_action,  # 실패한 행동
+                "observation_after": obs,
+                "failed_action": action,  # 실패한 행동
                 "flip_count": self.flip_count,  # 현재까지의 플립 횟수
                 "success_ratio": success_ratio,
-                "reward": failed_reward,
+                "reward": reward,
                 "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
                 "simulation_result": result_np,  # 현재 시뮬레이션 결과
                 "step": self.steps,  # 현재 스텝
             }
-            return failed_observation, failed_reward, False, False, info
+            return obs, reward, False, False, info
 
         self.max_psnr_diff = max(self.max_psnr_diff, psnr_diff)  # 최고 PSNR_DIFF 업데이트
 
-        self.steps += 1
-
         success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
-
-        # 보상 계산
-        reward = psnr_change * rw  # PSNR 변화량(psnr_change)에 기반한 보상
 
         # 출력 추가 (100 스텝마다 출력)
         if self.steps % 100 == 0:
@@ -238,7 +227,7 @@ class BinaryHologramEnv(gym.Env):
                 f"Step: {self.steps:<6}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[channel, row, col]}"
+                f"\nPre-flip Value: {pre_flip_value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             )
 
@@ -297,7 +286,7 @@ class BinaryHologramEnv(gym.Env):
             "state_before": self.state.copy(),  # 행동 이전 상태
             "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
             "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-            "observation_after": combined_observation if psnr_change >= 0 else None,  # 행동 성공 시 관찰값
+            "observation_after": obs,
             "failed_action": action if psnr_change < 0 else None,  # 실패한 행동
             "flip_count": self.flip_count,  # 현재까지의 플립 횟수
             "success_ratio": success_ratio,
@@ -308,4 +297,4 @@ class BinaryHologramEnv(gym.Env):
             "step": self.steps  # 현재 스텝
         }
 
-        return combined_observation, reward, terminated, truncated, info
+        return obs, reward, terminated, truncated, info
