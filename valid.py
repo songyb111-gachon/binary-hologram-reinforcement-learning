@@ -249,20 +249,20 @@ class StopOnEpisodeCallback(BaseCallback):
         return True  # 학습 계속
 
 batch_size = 1
-target_dir = 'dataset/'
-#target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
+#target_dir = 'dataset/'
+target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
 valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
 meta = {'wl': (515e-9), 'dx': (7.56e-6, 7.56e-6)}  # 메타 정보
 padding = 0
 
 # Dataset512 클래스 사용
-train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) #센터크롭
-#train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=True, padding=padding) #랜덤크롭
+#train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) #센터크롭
+train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=True, padding=padding) #랜덤크롭
 valid_dataset = Dataset512(target_dir=valid_dir, meta=meta, isTrain=False, padding=padding)
 
 # DataLoader 생성
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-#train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+#train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
 # BinaryNet 모델 로드
