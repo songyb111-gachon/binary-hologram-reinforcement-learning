@@ -2,6 +2,7 @@ import os
 import glob
 import shutil
 from datetime import datetime
+import time
 import warnings
 
 import numpy as np
@@ -25,7 +26,7 @@ import torchOptics.metrics as tm
 
 IPS = 256  #이미지 픽셀 사이즈
 CH = 8  #채널
-rw = 800  #보상
+RW = 800  #보상
 
 warnings.filterwarnings('ignore')
 
@@ -67,6 +68,7 @@ class BinaryHologramEnv(gym.Env):
         self.steps = 0
         self.psnr_sustained_steps = 0
         self.flip_count = 0
+        self.start_time = 0
 
         # 최고 PSNR_DIFF 추적 변수
         self.max_psnr_diff = float('-inf')  # 가장 높은 PSNR_DIFF를 추적
@@ -86,6 +88,8 @@ class BinaryHologramEnv(gym.Env):
         torch.cuda.empty_cache()
 
         self.episode_num_count += 1  # Increment episode count at the start of each reset
+
+        self.start_time = time.time()
 
         # 이터레이터에서 다음 데이터를 가져옴
         try:
@@ -177,7 +181,7 @@ class BinaryHologramEnv(gym.Env):
         psnr_diff = psnr_after - self.initial_psnr
 
         # 보상 계산
-        reward = psnr_change * rw  # PSNR 변화량(psnr_change)에 기반한 보상
+        reward = psnr_change * RW  # PSNR 변화량(psnr_change)에 기반한 보상
 
         self.steps += 1
 
@@ -248,6 +252,7 @@ class BinaryHologramEnv(gym.Env):
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
                 f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                f"\n[Time Check] 에피소드 소요 시간: {time.time() - self.start_time:.6f} seconds"
             )
             self.psnr_sustained_steps += 1
 
@@ -269,6 +274,7 @@ class BinaryHologramEnv(gym.Env):
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
                 f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                f"\n[Time Check] 에피소드 소요 시간: {time.time() - self.start_time:.6f} seconds"
             )
             # Goal-Reaching Reward or Penalty 함수
             # 1 = +300, 1/2 = +100, 1/4 = -100, 1/8 = -300
