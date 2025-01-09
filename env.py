@@ -252,7 +252,7 @@ class BinaryHologramEnv(gym.Env):
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
                 f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                f"\n[Time Check] 에피소드 소요 시간: {time.time() - self.start_time:.6f} seconds"
+                f"\n[Time Check] 에피소드{self.episode_num_count} 소요 시간: {time.time() - self.start_time:.6f} seconds"
             )
             self.psnr_sustained_steps += 1
 
@@ -274,7 +274,7 @@ class BinaryHologramEnv(gym.Env):
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
                 f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                f"\n[Time Check] 에피소드 소요 시간: {time.time() - self.start_time:.6f} seconds"
+                f"\n[Time Check] 에피소드{self.episode_num_count} 소요 시간: {time.time() - self.start_time:.6f} seconds"
             )
             # Goal-Reaching Reward or Penalty 함수
             # 1 = +300, 1/2 = +100, 1/4 = -100, 1/8 = -300
