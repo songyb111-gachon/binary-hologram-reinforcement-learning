@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 # 같은 폴더에 있는 TensorBoard 로그 파일의 이름을 자동으로 검색
-log_dir = "."  # 현재 폴더
+log_dir = ".."  # 현재 폴더
 event_file = [f for f in os.listdir(log_dir) if f.startswith("events.out")]
 
 if not event_file:
