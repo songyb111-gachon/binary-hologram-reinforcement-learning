@@ -1,6 +1,6 @@
 <div align="center">
 
-# binary hologram reinforcement learning
+# Binary Hologram Reinforcement Learning
 
 <img src="https://img.shields.io/badge/Python-3.8.10-blue?logo=python&logoColor=white" alt="Python 3.8.10">
 <img src="https://img.shields.io/badge/Stable--Baselines3-2.4.1-green?logo=python&logoColor=white" alt="Stable-Baselines3 2.4.1">
