@@ -41,7 +41,7 @@ from env import BinaryHologramEnv
 
 IPS = 256  #이미지 픽셀 사이즈
 CH = 8  #채널
-rw = 800  #보상
+RW = 800  #보상
 
 warnings.filterwarnings('ignore')
 
