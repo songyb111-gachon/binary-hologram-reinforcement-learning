@@ -526,7 +526,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
         current_state = obs["state"]
         target_image = obs["target_image"]
-        current_file = obs["current_file"]
         initial_psnr = env.initial_psnr  # 초기 PSNR
         previous_psnr = initial_psnr
         steps = 0
@@ -582,7 +581,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         # 최종 결과 출력
         psnr_diff = psnr_after - initial_psnr
         data_processing_time = time.time() - total_start_time
-        print(f"{current_file} Optimization completed. Final Diff: {psnr_diff:.6f}")
+        print(f"{db_num}.png Optimization completed. Final Diff: {psnr_diff:.6f}")
         print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
 
 batch_size = 1
