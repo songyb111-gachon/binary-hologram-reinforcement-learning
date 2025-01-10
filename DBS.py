@@ -301,82 +301,76 @@ class BinaryHologramEnv(gym.Env):
 def optimize_with_random_pixel_flips(env, z=2e-3):
     total_start_time = time.time()
 
-    obs = env.reset()  # 환경 초기화
-    current_state = obs["state"]
-    pre_model = obs["pre_model"]
-    target_image = obs["target_image"]
-    current_file = obs["current_file"]
-    initial_psnr = env.initial_psnr  # 초기 PSNR
-    previous_psnr = initial_psnr
-    steps = 0
-    flip_count = 0
-    psnr_after = 0
+    # 데이터셋 전체 순회
+    while True:
+        try:
+            obs = env.reset()  # 환경 초기화
+        except SystemExit:
+            # 데이터셋 종료 시 루프 탈출
+            print("Dataset exhausted. Exiting optimization loop.")
+            break
 
-    # 픽셀 크기 정보 가져오기
-    num_channels, img_height, img_width = current_state.shape[1:]
-    all_pixels = np.arange(num_channels * img_height * img_width)
-    np.random.shuffle(all_pixels)  # 랜덤 순서로 픽셀 섞기
+        current_state = obs["state"]
+        pre_model = obs["pre_model"]
+        target_image = obs["target_image"]
+        current_file = obs["current_file"]
+        initial_psnr = env.initial_psnr  # 초기 PSNR
+        previous_psnr = initial_psnr
+        steps = 0
+        flip_count = 0
+        psnr_after = 0
 
-    print(f"Starting pixel flip optimization with initial PSNR: {initial_psnr:.6f}")
+        # 픽셀 크기 정보 가져오기
+        num_channels, img_height, img_width = current_state.shape[1:]
+        all_pixels = np.arange(num_channels * img_height * img_width)
+        np.random.shuffle(all_pixels)  # 랜덤 순서로 픽셀 섞기
 
-    # 모든 픽셀에 대해 한 번씩 시도
-    for attempt, pixel in enumerate(all_pixels):
-        channel = pixel // (img_height * img_width)
-        pixel_index = pixel % (img_height * img_width)
-        row = pixel_index // img_width
-        col = pixel_index % img_width
+        print(f"Starting pixel flip optimization for file {current_file} with initial PSNR: {initial_psnr:.6f}")
 
-        # 현재 상태의 픽셀 값을 플립e
-        current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
+        # 모든 픽셀에 대해 한 번씩 시도
+        for attempt, pixel in enumerate(all_pixels):
+            channel = pixel // (img_height * img_width)
+            pixel_index = pixel % (img_height * img_width)
+            row = pixel_index // img_width
+            col = pixel_index % img_width
 
-        steps += 1
-
-        # 시뮬레이션 수행
-        binary_after = torch.tensor(current_state, dtype=torch.float32).cuda()
-        binary_after = tt.Tensor(binary_after, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})
-        sim_after = tt.simulate(binary_after, z).abs()**2
-        result_after = torch.mean(sim_after, dim=1, keepdim=True)
-        psnr_after = tt.relativeLoss(result_after, target_image, tm.get_PSNR)
-
-        # PSNR이 개선되었는지 확인
-        if psnr_after > previous_psnr:
-            flip_count += 1
-            if steps % 1000 == 0:
-                psnr_change = psnr_after - previous_psnr
-                psnr_diff = psnr_after - initial_psnr
-                success_ratio = flip_count / steps
-                data_processing_time = time.time() - total_start_time
-                print(
-                    f"Step: {steps}"
-                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
-                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
-                )
-            previous_psnr = psnr_after
-
-
-        else:
-            # PSNR이 개선되지 않았으면 플립 롤백
+            # 현재 상태의 픽셀 값을 플립
             current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
-            if steps % 1000 == 0:
-                psnr_change = psnr_after - previous_psnr
-                psnr_diff = psnr_after - initial_psnr
-                success_ratio = flip_count / steps
-                data_processing_time = time.time() - total_start_time
-                print(
-                    f"Step: {steps}"
-                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
-                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
-                )
 
-    # 최종 결과 출력
-    psnr_diff = psnr_after - initial_psnr
-    data_processing_time = time.time() - total_start_time
-    print(f"{current_file} Optimization completed. Final Diff: {psnr_diff:.6f}")
-    print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
+            steps += 1
+
+            # 시뮬레이션 수행
+            binary_after = torch.tensor(current_state, dtype=torch.float32).cuda()
+            binary_after = tt.Tensor(binary_after, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})
+            sim_after = tt.simulate(binary_after, z).abs()**2
+            result_after = torch.mean(sim_after, dim=1, keepdim=True)
+            psnr_after = tt.relativeLoss(result_after, target_image, tm.get_PSNR)
+
+            # PSNR이 개선되었는지 확인
+            if psnr_after > previous_psnr:
+                flip_count += 1
+                previous_psnr = psnr_after
+                if steps % 1000 == 0:
+                    psnr_change = psnr_after - previous_psnr
+                    psnr_diff = psnr_after - initial_psnr
+                    success_ratio = flip_count / steps
+                    data_processing_time = time.time() - total_start_time
+                    print(
+                        f"Step: {steps}"
+                        f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
+                        f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
+                        f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                        f"\nTime taken for this data: {data_processing_time:.2f} seconds"
+                    )
+            else:
+                # PSNR이 개선되지 않았으면 플립 롤백
+                current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
+
+        # 최종 결과 출력
+        psnr_diff = psnr_after - initial_psnr
+        data_processing_time = time.time() - total_start_time
+        print(f"{current_file} Optimization completed. Final Diff: {psnr_diff:.6f}")
+        print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
 
 batch_size = 1
 #target_dir = 'dataset1/'
