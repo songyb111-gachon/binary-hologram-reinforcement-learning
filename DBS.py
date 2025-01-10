@@ -379,8 +379,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
     print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
 
 batch_size = 1
-target_dir = 'dataset1/'
-#target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
+#target_dir = 'dataset1/'
+target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
 valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
 meta = {'wl': (515e-9), 'dx': (7.56e-6, 7.56e-6)}  # 메타 정보
 padding = 0
