@@ -537,7 +537,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         all_pixels = np.arange(num_channels * img_height * img_width)
         np.random.shuffle(all_pixels)  # 랜덤 순서로 픽셀 섞기
 
-        print(f"Starting pixel flip optimization for file {current_file} with initial PSNR: {initial_psnr:.6f}")
+        print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
 
         # 모든 픽셀에 대해 한 번씩 시도
         for attempt, pixel in enumerate(all_pixels):
