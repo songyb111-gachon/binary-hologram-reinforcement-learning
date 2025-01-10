@@ -310,6 +310,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
     previous_psnr = initial_psnr
     steps = 0
     flip_count = 0
+    psnr_after = 0
 
     # 픽셀 크기 정보 가져오기
     num_channels, img_height, img_width = current_state.shape[1:]
@@ -372,8 +373,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                 )
 
     # 최종 결과 출력
+    psnr_diff = psnr_after - initial_psnr
     data_processing_time = time.time() - total_start_time
-    print(f"{current_file} Optimization completed. Final PSNR: {previous_psnr:.6f}")
+    print(f"{current_file} Optimization completed. Final Diff: {psnr_diff:.6f}")
     print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
 
 batch_size = 1
