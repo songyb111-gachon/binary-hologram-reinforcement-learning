@@ -516,9 +516,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
     max_datasets = 800  # 최대 데이터셋 처리 개수
 
     # 데이터셋 전체 순회
-    while db_num < max_datasets:
+    while db_num <= max_datasets:
         try:
-            obs = env.reset()  # 환경 초기화
+            obs, info = env.reset()  # 환경 초기화 (튜플 언패킹)
             db_num += 1
         except Exception as e:
             print(f"An error occurred during reset: {e}")
