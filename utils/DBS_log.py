@@ -24,7 +24,7 @@ def extract_psnr_step_524288(file_path):
             psnr_improvement = match.group(5)  # 최종 PSNR 개선값
 
             # 파일 이름을 '001.png', '002.png' 형식으로 변경
-            formatted_file_name = f"{int(file_name.split('.')[0]):03}.png"
+            formatted_file_name = f"{int(file_name.split('.')[0]):04}.png"
 
             # 결과 추가
             #results.append(
