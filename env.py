@@ -69,6 +69,8 @@ class BinaryHologramEnv(gym.Env):
         self.psnr_sustained_steps = 0
         self.flip_count = 0
         self.start_time = 0
+        self.next_print_thresholds = 0
+        self.total_start_time = 0
 
         # 최고 PSNR_DIFF 추적 변수
         self.max_psnr_diff = float('-inf')  # 가장 높은 PSNR_DIFF를 추적
@@ -88,8 +90,6 @@ class BinaryHologramEnv(gym.Env):
         torch.cuda.empty_cache()
 
         self.episode_num_count += 1  # Increment episode count at the start of each reset
-
-        self.start_time = time.time()
 
         # 이터레이터에서 다음 데이터를 가져옴
         try:
@@ -125,7 +125,7 @@ class BinaryHologramEnv(gym.Env):
         result = torch.mean(sim, dim=1, keepdim=True)
 
         # MSE 및 PSNR 계산
-        mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
+        #mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
@@ -137,11 +137,17 @@ class BinaryHologramEnv(gym.Env):
 
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
-        current_time = datetime.now().strftime("%H:%M:%S")
         print(
-            f"\033[92mInitial PSNR: {self.initial_psnr:.6f} | Time: {current_time}"
-            f"\nInitial MSE: {mse:.6f}\033[0m"
+            f"\033[92mInitial PSNR: {self.initial_psnr:.6f}"
+            #f"\nInitial MSE: {mse:.6f}\033[0m"
         )
+
+        self.next_print_thresholds = 0
+
+        # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
+        self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
+
+        self.total_start_time = time.time()
 
         return obs, {"state": self.state}
 
@@ -191,51 +197,45 @@ class BinaryHologramEnv(gym.Env):
             self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
             self.flip_count -= 1
 
-            success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
-
-            # 출력 추가 (100 스텝마다 출력)
-            if self.steps % 100 == 0:
-                print(
-                    f"Step: {self.steps:<6}"
-                    f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                    f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                    f"\nPre model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
-                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                )
+            #success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
 
             # 실패 정보 생성
-            info = {
-                "psnr_before": psnr_before,
-                "psnr_after": psnr_after,
-                "psnr_change": psnr_change,
-                "psnr_diff": psnr_diff,
-                "pre_model_Value": pre_model_Value,
-                "state_before": self.state.copy(),  # 행동 이전 상태
-                "state_after": None,  # 실패한 경우에는 상태를 업데이트하지 않음
-                "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-                "observation_after": obs,
-                "failed_action": action,  # 실패한 행동
-                "flip_count": self.flip_count,  # 현재까지의 플립 횟수
-                "success_ratio": success_ratio,
-                "reward": reward,
-                "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
-                "simulation_result": result_np,  # 현재 시뮬레이션 결과
-                "step": self.steps,  # 현재 스텝
-            }
-            return obs, reward, False, False, info
+            #info = {
+            #    "psnr_before": psnr_before,
+            #    "psnr_after": psnr_after,
+            #    "psnr_change": psnr_change,
+            #    "psnr_diff": psnr_diff,
+            #    "pre_model_Value": pre_model_Value,
+            #    "state_before": self.state.copy(),  # 행동 이전 상태
+            #    "state_after": None,  # 실패한 경우에는 상태를 업데이트하지 않음
+            #    "observation_before": self.observation.copy(),  # 행동 이전 관찰값
+            #    "observation_after": obs,
+            #    "failed_action": action,  # 실패한 행동
+            #    "flip_count": self.flip_count,  # 현재까지의 플립 횟수
+            #    "success_ratio": success_ratio,
+            #    "reward": reward,
+            #    "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
+            #    "simulation_result": result_np,  # 현재 시뮬레이션 결과
+            #    "step": self.steps,  # 현재 스텝
+            #}
+
+            #return obs, reward, False, False, info
+            return obs, reward, False, False, {}
 
         self.max_psnr_diff = max(self.max_psnr_diff, psnr_diff)  # 최고 PSNR_DIFF 업데이트
 
         success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
 
-        # 출력 추가 (100 스텝마다 출력)
-        if self.steps % 100 == 0:
+        # 출력 추가 (0.01 PSNR 상승마다 출력)
+        while self.next_print_thresholds and psnr_after >= self.next_print_thresholds[0]:
+            self.next_print_thresholds.pop(0)
+            data_processing_time = time.time() - self.total_start_time
             print(
-                f"Step: {self.steps:<6}"
+                f"Step: {self.steps:<6} | Initial PSNR: {self.initial_psnr:.6f}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
 
         self.previous_psnr = psnr_after
@@ -245,14 +245,13 @@ class BinaryHologramEnv(gym.Env):
         truncated = self.steps >= self.max_steps
 
         if psnr_diff >= self.T_PSNR_DIFF or (psnr_after >= self.T_PSNR and psnr_diff < 0.1):
-            current_time = datetime.now().strftime("%H:%M:%S")
+            data_processing_time = time.time() - self.total_start_time
             print(
-                f"Step: {self.steps:<6} | Time: {current_time}"
+                f"Step: {self.steps:<6} | Initial PSNR: {self.initial_psnr:.6f}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                f"\n[Time Check] 에피소드{self.episode_num_count} 소요 시간: {time.time() - self.start_time:.6f} seconds"
+                f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
             self.psnr_sustained_steps += 1
 
@@ -267,14 +266,14 @@ class BinaryHologramEnv(gym.Env):
                 )
 
         if self.steps >= self.max_steps:
-            current_time = datetime.now().strftime("%H:%M:%S")
+            # 현재 PSNR 값이 출력 기준을 충족했는지 확인
+            data_processing_time = time.time() - self.total_start_time
             print(
-                f"Step: {self.steps:<6} | Time: {current_time}"
+                f"Step: {self.steps:<6} | Initial PSNR: {self.initial_psnr:.6f}"
                 f"\nPSNR Before: {psnr_before:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
                 f"\nReward: {reward:.2f} | Success Ratio: {success_ratio:.6f} | Flip Count: {self.flip_count}"
-                f"\nPre-model Value: {pre_model_Value:.6f} | New State Value: {self.state[0, channel, row, col]}"
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                f"\n[Time Check] 에피소드{self.episode_num_count} 소요 시간: {time.time() - self.start_time:.6f} seconds"
+                f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
             # Goal-Reaching Reward or Penalty 함수
             # 1 = +300, 1/2 = +100, 1/4 = -100, 1/8 = -300
@@ -286,24 +285,26 @@ class BinaryHologramEnv(gym.Env):
                 )
 
         # 관찰값 업데이트
-        info = {
-            "psnr_before": psnr_before,
-            "psnr_after": psnr_after,
-            "psnr_change": psnr_change,
-            "psnr_diff": psnr_diff,
-            "pre_model_Value": pre_model_Value,
-            "state_before": self.state.copy(),  # 행동 이전 상태
-            "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
-            "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-            "observation_after": obs,
-            "failed_action": action if psnr_change < 0 else None,  # 실패한 행동
-            "flip_count": self.flip_count,  # 현재까지의 플립 횟수
-            "success_ratio": success_ratio,
-            "reward": reward,
-            "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
-            "simulation_result": result_np,  # 현재 시뮬레이션 결과
-            "action_coords": (channel, row, col),  # 행동한 좌표
-            "step": self.steps  # 현재 스텝
-        }
+        #info = {
+        #    "psnr_before": psnr_before,
+        #    "psnr_after": psnr_after,
+        #    "psnr_change": psnr_change,
+        #    "psnr_diff": psnr_diff,
+        #    "pre_model_Value": pre_model_Value,
+        #    "state_before": self.state.copy(),  # 행동 이전 상태
+        #    "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
+        #    "observation_before": self.observation.copy(),  # 행동 이전 관찰값
+        #    "observation_after": obs,
+        #    "failed_action": action if psnr_change < 0 else None,  # 실패한 행동
+        #    "flip_count": self.flip_count,  # 현재까지의 플립 횟수
+        #    "success_ratio": success_ratio,
+        #    "reward": reward,
+        #    "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
+        #    "simulation_result": result_np,  # 현재 시뮬레이션 결과
+        #    "action_coords": (channel, row, col),  # 행동한 좌표
+        #    "step": self.steps  # 현재 스텝
+        #}
 
-        return obs, reward, terminated, truncated, info
+        #return obs, reward, terminated, truncated, info
+        return obs, reward, terminated, truncated, {}  # 빈 딕셔너리 반환
+
