@@ -139,7 +139,7 @@ class BinaryHologramEnv(gym.Env):
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
         print(
-            f"\033[92mInitial PSNR: {self.initial_psnr:.6f}"
+            f"\033[92mInitial PSNR: {self.initial_psnr:.6f}[0m"
             #f"\nInitial MSE: {mse:.6f}\033[0m"
         )
 
