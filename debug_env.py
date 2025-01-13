@@ -151,13 +151,13 @@ class BinaryHologramEnv(gym.Env):
         self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
 
         reset_t = time.time() - reset_time
-        f"\nTime taken for this data: {reset_t:.2f} seconds"
+        print(f"\nTime taken for this data: {reset_t:.2f} seconds")
 
         return obs, {"state": self.state}
 
     def step(self, action, z=2e-3):
         step_t = time.time() - self.step_time
-        f"\nTime taken for 스텝 사이와 사이 (action choose time?) : {step_t:.2f} seconds"
+        print(f"\nTime taken for 스텝 사이와 사이 (action choose time?) : {step_t:.2f} seconds")
 
         psnr_before = self.previous_psnr
 
@@ -182,7 +182,7 @@ class BinaryHologramEnv(gym.Env):
         result_after = torch.mean(sim_after, dim=1, keepdim=True)
         psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
         sim_t = time.time() - sim_time
-        f"\nTime taken for simulate : {sim_t:.2f} seconds"
+        print(f"\nTime taken for simulate : {sim_t:.2f} seconds")
 
         # 시뮬레이션 결과를 NumPy로 변환
         numpy_time = time.time()
@@ -192,12 +192,12 @@ class BinaryHologramEnv(gym.Env):
         target_image_np = self.target_image.cpu().numpy()
         result_np = result_after.cpu().numpy()
         numpy_t = time.time() - numpy_time
-        f"\nTime taken for NumPy : {numpy_t:.2f} seconds"
+        print(f"\nTime taken for NumPy : {numpy_t:.2f} seconds")
 
         obs_time = time.time()
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
         obs_t = time.time() - obs_time
-        f"\nTime taken for obs : {obs_t:.2f} seconds"
+        print(f"\nTime taken for obs : {obs_t:.2f} seconds")
 
         # PSNR 변화량 계산
         reward_time = time.time()
@@ -207,7 +207,7 @@ class BinaryHologramEnv(gym.Env):
         # 보상 계산
         reward = psnr_change * RW  # PSNR 변화량(psnr_change)에 기반한 보상
         reward_t = time.time() - reward_time
-        f"\nTime taken for reward : {reward_t:.2f} seconds"
+        print(f"\nTime taken for reward : {reward_t:.2f} seconds")
 
         self.steps += 1
 
@@ -241,7 +241,7 @@ class BinaryHologramEnv(gym.Env):
 
             #return obs, reward, False, False, info
             rollback_t = time.time() - rollback_time
-            f"\nTime taken for rollback : {rollback_t:.2f} seconds"
+            print(f"\nTime taken for rollback : {rollback_t:.2f} seconds")
             self.step_time = time.time()
             return obs, reward, False, False, {}
 
@@ -264,7 +264,7 @@ class BinaryHologramEnv(gym.Env):
             )
 
         print_t = time.time() - print_time
-        f"\nTime taken for print : {print_t:.2f} seconds"
+        print(f"\nTime taken for print : {print_t:.2f} seconds")
         self.previous_psnr = psnr_after
 
         terminated_time = time.time()
@@ -294,7 +294,7 @@ class BinaryHologramEnv(gym.Env):
                     - 595.2
                 )
         terminated_t = time.time() - terminated_time
-        f"\nTime taken for terminated : {terminated_t:.2f} seconds"
+        print(f"\nTime taken for terminated : {terminated_t:.2f} seconds")
 
         max_steps_time = time.time()
 
@@ -318,7 +318,7 @@ class BinaryHologramEnv(gym.Env):
                 )
 
         max_steps_t = time.time() - max_steps_time
-        f"\nTime taken for max_steps : {max_steps_t:.2f} seconds"
+        print(f"\nTime taken for max_steps : {max_steps_t:.2f} seconds")
         # 관찰값 업데이트
         #info = {
         #    "psnr_before": psnr_before,
