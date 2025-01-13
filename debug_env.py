@@ -117,8 +117,8 @@ class BinaryHologramEnv(gym.Env):
         self.psnr_sustained_steps = 0
         self.next_print_thresholds = 0
 
-        self.state = (self.observation >= 0.5).astype(torch.int8)  # 초기 Binary state
-        self.state_record = torch.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
+        self.state = (self.observation >= 0.5).to(torch.int8)  # 초기 Binary state
+        self.state_record = torch.zeros_like(self.state, dtype=torch.int8)
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
