@@ -38,9 +38,9 @@ class BinaryHologramEnv(gym.Env):
     def __init__(self, target_function, trainloader, max_steps=10000, T_PSNR=30, T_steps=1, T_PSNR_DIFF=0.1):
         super(BinaryHologramEnv, self).__init__()
 
-        # 관찰 공간 정보
+        # 관찰 공간 정의 (NumPy 형식으로는 유지하지만, 내부적으로 Tensor를 사용)
         self.observation_space = spaces.Dict({
-            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8), #이걸 기반으로 마스크를 해 말아
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
             "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
@@ -54,6 +54,7 @@ class BinaryHologramEnv(gym.Env):
         # 타겟 함수와 데이터 로더 설정
         self.target_function = target_function
         self.trainloader = trainloader
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # 환경 설정
         self.max_steps = max_steps
@@ -118,7 +119,7 @@ class BinaryHologramEnv(gym.Env):
         self.next_print_thresholds = 0
 
         self.state = (self.observation >= 0.5).to(torch.int8)  # 초기 Binary state
-        self.state_record = torch.zeros_like(self.state, dtype=torch.int8)
+        self.state_record = torch.zeros_like(self.state, dtype=torch.int8, device=self.device)
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
@@ -132,13 +133,14 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        state_record = self.state_record
-        state = self.state
-        pre_model = self.observation
-        target_image_np = self.target_image.cuda()
-        result_np = result.cuda()
-
-        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
+        # 관찰값을 Tensor로 반환
+        obs = {
+            "state_record": self.state_record,
+            "state": self.state,
+            "pre_model": self.observation,
+            "recon_image": result,
+            "target_image": self.target_image,
+        }
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
@@ -179,18 +181,14 @@ class BinaryHologramEnv(gym.Env):
         sim_t = time.time() - sim_time
         print(f"Step: {self.steps:<6} |Time taken for simulate : {sim_t:.6f} seconds")
 
-        # 시뮬레이션 결과를 NumPy로 변환
-        numpy_time = time.time()
-        state_record = self.state_record
-        state = self.state
-        pre_model = self.observation
-        target_image_np = self.target_image.cuda()
-        result_np = result_after.cuda()
-        numpy_t = time.time() - numpy_time
-        print(f"Step: {self.steps:<6} | Time taken for NumPy : {numpy_t:.6f} seconds")
-
         obs_time = time.time()
-        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
+        obs = {
+            "state_record": self.state_record,
+            "state": self.state,
+            "pre_model": self.observation,
+            "recon_image": result_after,
+            "target_image": self.target_image,
+        }
         obs_t = time.time() - obs_time
         print(f"Step: {self.steps:<6} | Time taken for obs : {obs_t:.6f} seconds")
 
