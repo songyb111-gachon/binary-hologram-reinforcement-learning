@@ -40,11 +40,11 @@ class BinaryHologramEnv(gym.Env):
 
         # 관찰 공간 정보
         self.observation_space = spaces.Dict({
-            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=torch.int8), #이걸 기반으로 마스크를 해 말아
-            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=torch.int8),
-            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=torch.float32),
-            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=torch.float32),
-            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=torch.float32),
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8), #이걸 기반으로 마스크를 해 말아
+            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
+            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
+            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
         })
 
         # 행동 공간: 픽셀 하나를 선택하는 인덱스 (CH * IPS * IPS)
