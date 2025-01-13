@@ -40,11 +40,11 @@ class BinaryHologramEnv(gym.Env):
 
         # 관찰 공간 정보
         self.observation_space = spaces.Dict({
-            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8), #이걸 기반으로 마스크를 해 말아
-            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
-            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
-            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
-            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=torch.int8), #이걸 기반으로 마스크를 해 말아
+            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=torch.int8),
+            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=torch.float32),
+            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=torch.float32),
+            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=torch.float32),
         })
 
         # 행동 공간: 픽셀 하나를 선택하는 인덱스 (CH * IPS * IPS)
@@ -108,7 +108,7 @@ class BinaryHologramEnv(gym.Env):
 
         with torch.no_grad():
             model_output = self.target_function(self.target_image)
-        self.observation = model_output.cpu().numpy()  # (1, CH, IPS, IPS)
+        self.observation = model_output.cuda()  # (1, CH, IPS, IPS)
 
         # 매 에피소드마다 초기화
         self.max_psnr_diff = float('-inf')
@@ -117,8 +117,8 @@ class BinaryHologramEnv(gym.Env):
         self.psnr_sustained_steps = 0
         self.next_print_thresholds = 0
 
-        self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
-        self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
+        self.state = (self.observation >= 0.5).astype(torch.int8)  # 초기 Binary state
+        self.state_record = torch.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
@@ -135,8 +135,8 @@ class BinaryHologramEnv(gym.Env):
         state_record = self.state_record
         state = self.state
         pre_model = self.observation
-        target_image_np = self.target_image.cpu().numpy()
-        result_np = result.cpu().numpy()
+        target_image_np = self.target_image.cuda()
+        result_np = result.cuda()
 
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
@@ -184,8 +184,8 @@ class BinaryHologramEnv(gym.Env):
         state_record = self.state_record
         state = self.state
         pre_model = self.observation
-        target_image_np = self.target_image.cpu().numpy()
-        result_np = result_after.cpu().numpy()
+        target_image_np = self.target_image.cuda()
+        result_np = result_after.cuda()
         numpy_t = time.time() - numpy_time
         print(f"Step: {self.steps:<6} | Time taken for NumPy : {numpy_t:.6f} seconds")
 
