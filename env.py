@@ -113,6 +113,7 @@ class BinaryHologramEnv(gym.Env):
         self.steps = 0
         self.flip_count = 0
         self.psnr_sustained_steps = 0
+        self.next_print_thresholds = 0
 
         self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
         self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
@@ -141,8 +142,6 @@ class BinaryHologramEnv(gym.Env):
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}"
             #f"\nInitial MSE: {mse:.6f}\033[0m"
         )
-
-        self.next_print_thresholds = 0
 
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
         self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
