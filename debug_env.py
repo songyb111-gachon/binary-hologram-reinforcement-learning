@@ -133,13 +133,7 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        state_record = self.state_record
-        state = self.state
-        pre_model = self.observation
-        target_image_np = self.target_image_np
-        result_np = result.cpu().numpy()
-
-        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
+        obs = {"state_record": self.state_record, "state": self.state, "pre_model": self.observation, "recon_image": self.target_image_np, "target_image": result.cpu().numpy()}
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
@@ -168,7 +162,6 @@ class BinaryHologramEnv(gym.Env):
         col = pixel_index % IPS
 
         # 상태 변경
-        pre_model_Value = self.observation[0, channel, row, col]
         self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
         self.state_record[0, channel, row, col] = self.state_record[0, channel, row, col] + 1
 
@@ -185,18 +178,8 @@ class BinaryHologramEnv(gym.Env):
         print(f"Step: {self.steps:<6} | Time simulate: {sim_t:.6f} seconds")
 
         # 시뮬레이션 결과를 NumPy로 변환
-        numpy_time = time.time()
-        state_record = self.state_record
-        state = self.state
-        pre_model = self.observation
-        target_image_np = self.target_image_np
-        result_np = result_after.cpu().numpy()
-
-        numpy_t = time.time() - numpy_time
-        print(f"Step: {self.steps:<6} | Time NumPy: {numpy_t:.6f} seconds")
-
         obs_time = time.time()
-        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
+        obs = {"state_record": self.state_record, "state": self.state, "pre_model": self.observation, "recon_image": self.target_image_np, "target_image": result_after.cpu().numpy()}
         obs_t = time.time() - obs_time
         print(f"Step: {self.steps:<6} | Time obs: {obs_t:.6f} seconds")
 
