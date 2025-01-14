@@ -111,7 +111,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 매 에피소드마다 초기화
         self.max_psnr_diff = float('-inf')
-        self.steps = 1
+        self.steps = 0
         self.flip_count = 0
         self.psnr_sustained_steps = 0
         self.next_print_thresholds = 0
@@ -152,6 +152,8 @@ class BinaryHologramEnv(gym.Env):
         return obs, {"state": self.state}
 
     def step(self, action, z=2e-3):
+        self.steps += 1
+
         psnr_before = self.previous_psnr
 
         # 행동을 기반으로 픽셀 좌표 계산
@@ -189,8 +191,6 @@ class BinaryHologramEnv(gym.Env):
 
         # 보상 계산
         reward = psnr_change * RW  # PSNR 변화량(psnr_change)에 기반한 보상
-
-        self.steps += 1
 
         # psnr_change가 음수인 경우 상태 롤백 수행
         if psnr_change < 0:
