@@ -137,7 +137,7 @@ class BinaryHologramEnv(gym.Env):
         obs = {#"state_record": self.state_record,
                #"state": self.state,
                #"pre_model": self.observation,
-               #"recon_image": result.cpu().numpy()
+               #"recon_image": result.cpu().numpy(),
                "target_image": self.target_image_np,
                }
 
