@@ -16,7 +16,7 @@ def select_log_file():
 def get_step_range():
     root = tk.Tk()
     root.withdraw()  # GUI 창을 숨김
-    step_range = simpledialog.askstring("Input", "Enter step range (e.g., 338-400):")
+    step_range = simpledialog.askstring("Input", "Enter step range (e.g., 2-512):")
     return step_range
 
 
