@@ -26,9 +26,9 @@ def process_log_file(file_path, start_step, end_step):
     # 데이터 정리
     step_data = []
     for line in log_data:
-        # 포괄적인 정규식
+        # 로그 형식에 맞는 정규식
         match = re.search(
-            r"Step:\s*(\d+)\s*\|?\s*Time taken for\s*(.+?)\s*:\s*([\d\.]+)\s*seconds", line
+            r"Step:\s*(\d+)\s*\|\s*Time\s*(.+?)\s*:\s*([\d\.]+)\s*seconds", line
         )
         if match:
             step, action, time = match.groups()
@@ -47,10 +47,10 @@ def process_log_file(file_path, start_step, end_step):
         print(f"No data found for the specified step range: {start_step}-{end_step}")
         return None
 
-    # 평균 시간 계산 (각 Action의 데이터 수 기준)
+    # 평균 시간 계산 (스텝 범위 내 데이터 수 기준)
     avg_times = filtered_df.groupby('Action')['Time'].mean()
-    counts = filtered_df['Action'].value_counts()
-    result = pd.DataFrame({'Average Time': avg_times, 'Count': counts})
+    counts = filtered_df.groupby('Action')['Step'].count()  # 범위 내 카운트 계산
+    result = pd.DataFrame({'Average Time': avg_times, 'Count in Range': counts})
     return result
 
 # 실행 코드

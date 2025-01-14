@@ -71,6 +71,7 @@ class BinaryHologramEnv(gym.Env):
         self.start_time = 0
         self.next_print_thresholds = 0
         self.total_start_time = 0
+        self.target_image_np = None
 
         # 최고 PSNR_DIFF 추적 변수
         self.max_psnr_diff = float('-inf')  # 가장 높은 PSNR_DIFF를 추적
@@ -86,7 +87,6 @@ class BinaryHologramEnv(gym.Env):
         self.episode_num_count = 0
 
         self.step_time = 0
-
 
     def reset(self, seed=None, options=None, z=2e-3):
         torch.cuda.empty_cache()
@@ -148,6 +148,8 @@ class BinaryHologramEnv(gym.Env):
 
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
         self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
+
+        self.total_start_time = time.time()
 
         return obs, {"state": self.state}
 
@@ -239,13 +241,10 @@ class BinaryHologramEnv(gym.Env):
 
         print_t = time.time() - print_time
         print(f"Step: {self.steps:<6} | Time print: {print_t:.6f} seconds")
+
         self.previous_psnr = psnr_after
 
-        terminated_time = time.time()
-
-        # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
-        terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
-        truncated = self.steps >= self.max_steps
+        diff_time = time.time()
 
         if psnr_diff >= self.T_PSNR_DIFF or (psnr_after >= self.T_PSNR and psnr_diff < 0.1):
             data_processing_time = time.time() - self.total_start_time
@@ -267,8 +266,8 @@ class BinaryHologramEnv(gym.Env):
                     + 2800 * success_ratio
                     - 595.2
                 )
-        terminated_t = time.time() - terminated_time
-        print(f"Step: {self.steps:<6} | Time terminated: {terminated_t:.6f} seconds")
+        diff_t = time.time() - diff_time
+        print(f"Step: {self.steps:<6} | Time diff: {diff_t:.6f} seconds")
 
         max_steps_time = time.time()
 
@@ -293,6 +292,13 @@ class BinaryHologramEnv(gym.Env):
 
         max_steps_t = time.time() - max_steps_time
         print(f"Step: {self.steps:<6} | Time max_steps: {max_steps_t:.6f} seconds")
+
+        terminated_time = time.time()
+        # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
+        terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
+        truncated = self.steps >= self.max_steps
+        terminated_t = time.time() - terminated_time
+        print(f"Step: {self.steps:<6} | Time terminated: {terminated_t:.6f} seconds")
 
         self.step_time = time.time()
 

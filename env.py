@@ -71,6 +71,7 @@ class BinaryHologramEnv(gym.Env):
         self.start_time = 0
         self.next_print_thresholds = 0
         self.total_start_time = 0
+        self.target_image_np = None
 
         # 최고 PSNR_DIFF 추적 변수
         self.max_psnr_diff = float('-inf')  # 가장 높은 PSNR_DIFF를 추적
@@ -102,6 +103,7 @@ class BinaryHologramEnv(gym.Env):
         print(f"\033[40;93m[Episode Start] Currently using dataset file: {self.current_file}, Episode count: {self.episode_num_count}\033[0m")
 
         self.target_image = self.target_image.cuda()
+        self.target_image_np = self.target_image.cpu().numpy()
 
         with torch.no_grad():
             model_output = self.target_function(self.target_image)
@@ -125,21 +127,21 @@ class BinaryHologramEnv(gym.Env):
         result = torch.mean(sim, dim=1, keepdim=True)
 
         # MSE 및 PSNR 계산
-        #mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
+        mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
         state_record = self.state_record
         state = self.state
         pre_model = self.observation
-        target_image_np = self.target_image.cpu().numpy()
+        target_image_np = self.target_image_np
         result_np = result.cpu().numpy()
 
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
-            #f"\nInitial MSE: {mse:.6f}\033[0m"
+            f"\nInitial MSE: {mse:.6f}\033[0m"
         )
 
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
@@ -176,10 +178,8 @@ class BinaryHologramEnv(gym.Env):
         state_record = self.state_record
         state = self.state
         pre_model = self.observation
-        target_image_np = self.target_image.cpu().numpy()
+        target_image_np = self.target_image_np
         result_np = result_after.cpu().numpy()
-        #target_image_np = self.target_image.cpu().numpy()
-        #result_np = result_after.cpu().numpy()
 
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
