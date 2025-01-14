@@ -65,12 +65,12 @@ class BinaryHologramEnv(gym.Env):
         self.state = None
         self.state_record = None
         self.observation = None
-        self.steps = 0
-        self.psnr_sustained_steps = 0
-        self.flip_count = 0
-        self.start_time = 0
+        self.steps = None
+        self.psnr_sustained_steps = None
+        self.flip_count = None
+        self.start_time = None
         self.next_print_thresholds = 0
-        self.total_start_time = 0
+        self.total_start_time = None
         self.target_image_np = None
 
         # 최고 PSNR_DIFF 추적 변수
