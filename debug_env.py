@@ -210,8 +210,6 @@ class BinaryHologramEnv(gym.Env):
         reward_t = time.time() - reward_time
         print(f"Step: {self.steps:<6} | Time reward: {reward_t:.6f} seconds")
 
-        self.steps += 1
-
         # psnr_change가 음수인 경우 상태 롤백 수행
         if psnr_change < 0:
             rollback_time = time.time()
