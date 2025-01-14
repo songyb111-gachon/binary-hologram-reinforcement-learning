@@ -13,10 +13,14 @@ def select_log_file():
 
 
 # 스텝 범위 입력받기
-def get_step_range():
+def get_step_range(default_range="2-512"):
     root = tk.Tk()
     root.withdraw()  # GUI 창을 숨김
-    step_range = simpledialog.askstring("Input", "Enter step range (e.g., 2-512):")
+    step_range = simpledialog.askstring(
+        "Input",
+        "Enter step range (e.g., 2-512):",
+        initialvalue=default_range  # 기본값 설정
+    )
     return step_range
 
 
@@ -64,7 +68,7 @@ def process_log_file(file_path, start_step, end_step):
 if __name__ == "__main__":
     file_path = select_log_file()
     if file_path:
-        step_range = get_step_range()
+        step_range = get_step_range(default_range="2-512")  # 기본값 전달
         if step_range:
             try:
                 start_step, end_step = map(int, step_range.split('-'))
