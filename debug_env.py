@@ -105,6 +105,7 @@ class BinaryHologramEnv(gym.Env):
         print(f"\033[40;93m[Episode Start] Currently using dataset file: {self.current_file}, Episode count: {self.episode_num_count}\033[0m")
 
         self.target_image = self.target_image.cuda()
+        self.target_image_np = self.target_image.cpu().numpy()
 
         with torch.no_grad():
             model_output = self.target_function(self.target_image)
@@ -135,8 +136,8 @@ class BinaryHologramEnv(gym.Env):
         state_record = self.state_record
         state = self.state
         pre_model = self.observation
-        target_image_np = self.target_image
-        result_np = result
+        target_image_np = self.target_image_np
+        result_np = result.cpu().numpy()
 
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
@@ -184,8 +185,8 @@ class BinaryHologramEnv(gym.Env):
         state_record = self.state_record
         state = self.state
         pre_model = self.observation
-        target_image_np = self.target_image
-        result_np = result_after
+        target_image_np = self.target_image_np
+        result_np = result_after.cpu().numpy()
 
         numpy_t = time.time() - numpy_time
         print(f"Step: {self.steps:<6} | Time NumPy: {numpy_t:.6f} seconds")
