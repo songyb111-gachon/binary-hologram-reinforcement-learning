@@ -132,7 +132,12 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        obs = {"state_record": self.state_record, "state": self.state, "pre_model": self.observation, "recon_image": self.target_image_np, "target_image": result.cpu().numpy()}
+        obs = {"state_record": self.state_record,
+               "state": self.state,
+               "pre_model": self.observation,
+               "recon_image": self.target_image_np,
+               "target_image": result.cpu().numpy()
+               }
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
@@ -168,7 +173,12 @@ class BinaryHologramEnv(gym.Env):
         result_after = torch.mean(sim_after, dim=1, keepdim=True)
         psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
 
-        obs = {"state_record": self.state_record, "state": self.state, "pre_model": self.observation, "recon_image": self.target_image_np, "target_image": result_after.cpu().numpy()}
+        obs = {"state_record": self.state_record,
+               "state": self.state,
+               "pre_model": self.observation,
+               "recon_image": self.target_image_np,
+               "target_image": result_after.cpu().numpy()
+               }
 
         # PSNR 변화량 계산
         psnr_change = psnr_after - self.previous_psnr
