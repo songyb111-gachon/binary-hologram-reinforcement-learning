@@ -42,7 +42,7 @@ class BinaryHologramEnv(gym.Env):
         self.observation_space = spaces.Dict({
         #    "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
         #    "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
-        #    "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
+            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
             "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
             "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
         })
@@ -136,7 +136,7 @@ class BinaryHologramEnv(gym.Env):
 
         obs = {#"state_record": self.state_record,
                #"state": self.state,
-               #"pre_model": self.observation,
+               "pre_model": self.observation,
                "recon_image": result.cpu().numpy(),
                "target_image": self.target_image_np,
                }
@@ -185,7 +185,7 @@ class BinaryHologramEnv(gym.Env):
         obs_time = time.time()
         obs = {#"state_record": self.state_record,
                #"state": self.state,
-               #"pre_model": self.observation,
+               "pre_model": self.observation,
                "recon_image": result_after.cpu().numpy(),
                "target_image": self.target_image_np,
                }
