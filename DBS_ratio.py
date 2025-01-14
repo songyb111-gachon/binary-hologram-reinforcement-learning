@@ -207,6 +207,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
     bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
     improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
+    psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
 
     while db_num <= max_datasets:
         try:
@@ -298,7 +299,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                         bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                         if psnr_after > previous_psnr:
                             improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                        break
+                        psnr_improvements[i].append(psnr_after - previous_psnr)  # 개선량 저장
+                    break
 
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
@@ -325,10 +327,14 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             improved_count = improved_bin_counts[i]
             improved_ratio = improved_count / total_count if total_count > 0 else 0
             range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
+            total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
+            avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
             print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
                   f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
                   f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
-                  f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}")
+                  f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
+                  f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
+                  f"Average PSNR Improvement = {avg_psnr_improvement:.6f}")
 
         print("\n")
 
