@@ -295,20 +295,15 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                 # 범위에 따른 카운트 증가
                 for i in range(len(output_bins) - 1):
                     if output_bins[i] <= pre_value < output_bins[i + 1]:
-                        improved_bin_counts[i] += 1
+                        bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
+                        if psnr_after > previous_psnr:
+                            improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
                         break
 
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
                 state_raito[0, channel, row, col] = state_raito[0, channel, row, col] - 1
-
-            # 전체 픽셀에 대해 범위별 카운트 증가
-            pre_value = pre_model_output[channel, row, col]
-            for i in range(len(output_bins) - 1):
-                if output_bins[i] <= pre_value < output_bins[i + 1]:
-                    bin_counts[i] += 1
-                    break
 
         # 최종 결과 출력
         psnr_diff = psnr_after - initial_psnr
@@ -323,13 +318,17 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         print(f"{db_num}.png Optimization completed. Final PSNR improvement: {psnr_diff:.6f}")
         print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
         print("Pre-model output range statistics:")
+
+        total_improved_pixels = sum(improved_bin_counts.values())
         for i in range(len(output_bins) - 1):
             total_count = bin_counts[i]
             improved_count = improved_bin_counts[i]
             improved_ratio = improved_count / total_count if total_count > 0 else 0
+            range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
             print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
                   f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
-                  f"Improvement Ratio = {improved_ratio:.6f}")
+                  f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
+                  f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}")
 
         print("\n")
 
