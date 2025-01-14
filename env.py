@@ -240,10 +240,6 @@ class BinaryHologramEnv(gym.Env):
 
         self.previous_psnr = psnr_after
 
-        # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
-        terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
-        truncated = self.steps >= self.max_steps
-
         if psnr_diff >= self.T_PSNR_DIFF or (psnr_after >= self.T_PSNR and psnr_diff < 0.1):
             data_processing_time = time.time() - self.total_start_time
             print(
@@ -283,6 +279,10 @@ class BinaryHologramEnv(gym.Env):
                     + 2800 * success_ratio
                     - 595.24
                 )
+
+        # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
+        terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
+        truncated = self.steps >= self.max_steps
 
         # 관찰값 업데이트
         #info = {
