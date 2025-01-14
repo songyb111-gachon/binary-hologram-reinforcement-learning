@@ -72,6 +72,7 @@ class BinaryHologramEnv(gym.Env):
         self.next_print_thresholds = 0
         self.total_start_time = None
         self.target_image_np = None
+        self.initial_psnr = None
 
         # 최고 PSNR_DIFF 추적 변수
         self.max_psnr_diff = float('-inf')  # 가장 높은 PSNR_DIFF를 추적
@@ -153,8 +154,6 @@ class BinaryHologramEnv(gym.Env):
         step_t = time.time() - self.step_time
         print(f"Step: {self.steps:<6} | Time action: {step_t:.6f} seconds")
 
-        psnr_before = self.previous_psnr
-
         # 행동을 기반으로 픽셀 좌표 계산
         channel = action // (IPS * IPS)
         pixel_index = action % (IPS * IPS)
@@ -185,7 +184,7 @@ class BinaryHologramEnv(gym.Env):
 
         # PSNR 변화량 계산
         reward_time = time.time()
-        psnr_change = psnr_after - psnr_before
+        psnr_change = psnr_after - self.previous_psnr
         psnr_diff = psnr_after - self.initial_psnr
 
         # 보상 계산
