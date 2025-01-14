@@ -40,10 +40,10 @@ class BinaryHologramEnv(gym.Env):
 
         # 관찰 공간 정보
         self.observation_space = spaces.Dict({
-        #    "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
-        #    "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
-        #    "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
-        #    "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
+            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
+            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
+            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
             "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
         })
 
@@ -86,8 +86,6 @@ class BinaryHologramEnv(gym.Env):
 
         # 에피소드 카운트
         self.episode_num_count = 0
-
-        self.step_time = 0
 
     def reset(self, seed=None, options=None, z=2e-3):
         torch.cuda.empty_cache()
@@ -134,11 +132,11 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        obs = {#"state_record": self.state_record,
-               #"state": self.state,
+        obs = {"state_record": self.state_record,
+               "state": self.state,
                "pre_model": self.observation,
-               #"recon_image": self.target_image_np,
-               #"target_image": result.cpu().numpy()
+               "recon_image": self.target_image_np,
+               "target_image": result.cpu().numpy()
                }
 
         print(
@@ -156,9 +154,6 @@ class BinaryHologramEnv(gym.Env):
     def step(self, action, z=2e-3):
         self.steps += 1
 
-        step_t = time.time() - self.step_time
-        print(f"Step: {self.steps:<6} | Time action: {step_t:.6f} seconds")
-
         # 행동을 기반으로 픽셀 좌표 계산
         channel = action // (IPS * IPS)
         pixel_index = action % (IPS * IPS)
@@ -172,52 +167,37 @@ class BinaryHologramEnv(gym.Env):
         self.flip_count += 1  # 플립 증가
 
         # 시뮬레이션 수행
-        sim_time = time.time()
         binary_after = torch.tensor(self.state, dtype=torch.float32).cuda()
         binary_after = tt.Tensor(binary_after, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})
         sim_after = tt.simulate(binary_after, z).abs()**2
         result_after = torch.mean(sim_after, dim=1, keepdim=True)
         psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
-        sim_t = time.time() - sim_time
-        print(f"Step: {self.steps:<6} | Time simulate: {sim_t:.6f} seconds")
 
-        # 시뮬레이션 결과를 NumPy로 변환
-        obs_time = time.time()
-        obs = {#"state_record": self.state_record,
-               #"state": self.state,
-               #"pre_model": self.observation,
-               #"recon_image": self.target_image_np,
+        obs = {"state_record": self.state_record,
+               "state": self.state,
+               "pre_model": self.observation,
+               "recon_image": self.target_image_np,
                "target_image": result_after.cpu().numpy()
                }
-        obs_t = time.time() - obs_time
-        print(f"Step: {self.steps:<6} | Time obs: {obs_t:.6f} seconds")
 
         # PSNR 변화량 계산
-        reward_time = time.time()
         psnr_change = psnr_after - self.previous_psnr
         psnr_diff = psnr_after - self.initial_psnr
 
         # 보상 계산
         reward = psnr_change * RW  # PSNR 변화량(psnr_change)에 기반한 보상
-        reward_t = time.time() - reward_time
-        print(f"Step: {self.steps:<6} | Time reward: {reward_t:.6f} seconds")
 
         # psnr_change가 음수인 경우 상태 롤백 수행
         if psnr_change < 0:
-            rollback_time = time.time()
+
             self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
             self.flip_count -= 1
 
-            rollback_t = time.time() - rollback_time
-            print(f"Step: {self.steps:<6} | Time rollback: {rollback_t:.6f} seconds")
-            self.step_time = time.time()
             return obs, reward, False, False, {}
 
         self.max_psnr_diff = max(self.max_psnr_diff, psnr_diff)  # 최고 PSNR_DIFF 업데이트
 
         success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
-
-        print_time = time.time()
 
         # 출력 추가 (0.01 PSNR 상승마다 출력)
         while self.next_print_thresholds and psnr_after >= self.next_print_thresholds[0]:
@@ -231,12 +211,7 @@ class BinaryHologramEnv(gym.Env):
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
 
-        print_t = time.time() - print_time
-        print(f"Step: {self.steps:<6} | Time print: {print_t:.6f} seconds")
-
         self.previous_psnr = psnr_after
-
-        diff_time = time.time()
 
         if psnr_diff >= self.T_PSNR_DIFF or (psnr_after >= self.T_PSNR and psnr_diff < 0.1):
             data_processing_time = time.time() - self.total_start_time
@@ -258,10 +233,6 @@ class BinaryHologramEnv(gym.Env):
                     + 2800 * success_ratio
                     - 595.2
                 )
-        diff_t = time.time() - diff_time
-        print(f"Step: {self.steps:<6} | Time diff: {diff_t:.6f} seconds")
-
-        max_steps_time = time.time()
 
         if self.steps >= self.max_steps:
             # 현재 PSNR 값이 출력 기준을 충족했는지 확인
@@ -282,16 +253,8 @@ class BinaryHologramEnv(gym.Env):
                     - 595.24
                 )
 
-        max_steps_t = time.time() - max_steps_time
-        print(f"Step: {self.steps:<6} | Time max_steps: {max_steps_t:.6f} seconds")
-
-        terminated_time = time.time()
         # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
         terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
         truncated = self.steps >= self.max_steps
-        terminated_t = time.time() - terminated_time
-        print(f"Step: {self.steps:<6} | Time terminated: {terminated_t:.6f} seconds")
-
-        self.step_time = time.time()
 
         return obs, reward, terminated, truncated, {}  # 빈 딕셔너리 반환
