@@ -249,8 +249,8 @@ class StopOnEpisodeCallback(BaseCallback):
         return True  # 학습 계속
 
 batch_size = 1
-#target_dir = 'dataset/'
-target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
+target_dir = 'dataset1/'
+#target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
 valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
 meta = {'wl': (515e-9), 'dx': (7.56e-6, 7.56e-6)}  # 메타 정보
 padding = 0
@@ -274,7 +274,8 @@ model.eval()
 # 환경 생성에 새로운 데이터 로더 적용
 env = BinaryHologramEnv(
     target_function=model,
-    trainloader=train_loader, 
+    trainloader=train_loader,
+    T_PSNR_DIFF=0.001
 )
 
 import optuna
@@ -282,7 +283,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 
-def optimize_hyperparameters(env, n_trials=100, n_timesteps=10000):
+def optimize_hyperparameters(env, n_trials=1000, n_timesteps=10000):
     def objective(trial):
         # Hyperparameter search space
         n_steps = trial.suggest_int("n_steps", 128, 2048, step=128)
