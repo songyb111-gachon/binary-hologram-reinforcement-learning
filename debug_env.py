@@ -136,9 +136,9 @@ class BinaryHologramEnv(gym.Env):
 
         obs = {#"state_record": self.state_record,
                #"state": self.state,
-               "pre_model": self.observation,
-               #"recon_image": self.target_image_np,
-               #"target_image": result.cpu().numpy()
+               #"pre_model": self.observation,
+               #"recon_image": result.cpu().numpy()
+               "target_image": self.target_image_np,
                }
 
         print(
@@ -186,8 +186,8 @@ class BinaryHologramEnv(gym.Env):
         obs = {#"state_record": self.state_record,
                #"state": self.state,
                #"pre_model": self.observation,
-               #"recon_image": self.target_image_np,
-               "target_image": result_after.cpu().numpy()
+               #"recon_image": result_after.cpu().numpy(),
+               "target_image": self.target_image_np,
                }
         obs_t = time.time() - obs_time
         print(f"Step: {self.steps:<6} | Time obs: {obs_t:.6f} seconds")

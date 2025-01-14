@@ -135,8 +135,8 @@ class BinaryHologramEnv(gym.Env):
         obs = {"state_record": self.state_record,
                "state": self.state,
                "pre_model": self.observation,
-               "recon_image": self.target_image_np,
-               "target_image": result.cpu().numpy()
+               "recon_image": result.cpu().numpy(),
+               "target_image": self.target_image_np,
                }
 
         print(
@@ -176,8 +176,8 @@ class BinaryHologramEnv(gym.Env):
         obs = {"state_record": self.state_record,
                "state": self.state,
                "pre_model": self.observation,
-               "recon_image": self.target_image_np,
-               "target_image": result_after.cpu().numpy()
+               "recon_image": result_after.cpu().numpy(),
+               "target_image": self.target_image_np,
                }
 
         # PSNR 변화량 계산
