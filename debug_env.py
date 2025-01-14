@@ -40,7 +40,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 관찰 공간 정보
         self.observation_space = spaces.Dict({
-            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8), #이걸 기반으로 마스크를 해 말아
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
             "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
@@ -65,12 +65,12 @@ class BinaryHologramEnv(gym.Env):
         self.state = None
         self.state_record = None
         self.observation = None
-        self.steps = 0
-        self.psnr_sustained_steps = 0
-        self.flip_count = 0
-        self.start_time = 0
+        self.steps = None
+        self.psnr_sustained_steps = None
+        self.flip_count = None
+        self.start_time = None
         self.next_print_thresholds = 0
-        self.total_start_time = 0
+        self.total_start_time = None
         self.target_image_np = None
 
         # 최고 PSNR_DIFF 추적 변수
@@ -154,6 +154,8 @@ class BinaryHologramEnv(gym.Env):
         return obs, {"state": self.state}
 
     def step(self, action, z=2e-3):
+        self.steps += 1
+
         step_t = time.time() - self.step_time
         print(f"Step: {self.steps:<6} | Time action: {step_t:.6f} seconds")
 
