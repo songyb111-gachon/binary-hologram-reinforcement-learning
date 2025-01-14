@@ -38,9 +38,9 @@ class BinaryHologramEnv(gym.Env):
     def __init__(self, target_function, trainloader, max_steps=10000, T_PSNR=30, T_steps=1, T_PSNR_DIFF=0.1):
         super(BinaryHologramEnv, self).__init__()
 
-        # 관찰 공간 정의 (NumPy 형식으로는 유지하지만, 내부적으로 Tensor를 사용)
+        # 관찰 공간 정보
         self.observation_space = spaces.Dict({
-            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
+            "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8), #이걸 기반으로 마스크를 해 말아
             "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
             "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
@@ -54,7 +54,6 @@ class BinaryHologramEnv(gym.Env):
         # 타겟 함수와 데이터 로더 설정
         self.target_function = target_function
         self.trainloader = trainloader
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # 환경 설정
         self.max_steps = max_steps
@@ -109,7 +108,7 @@ class BinaryHologramEnv(gym.Env):
 
         with torch.no_grad():
             model_output = self.target_function(self.target_image)
-        self.observation = model_output.cuda()  # (1, CH, IPS, IPS)
+        self.observation = model_output.cpu().numpy()  # (1, CH, IPS, IPS)
 
         # 매 에피소드마다 초기화
         self.max_psnr_diff = float('-inf')
@@ -118,8 +117,8 @@ class BinaryHologramEnv(gym.Env):
         self.psnr_sustained_steps = 0
         self.next_print_thresholds = 0
 
-        self.state = (self.observation >= 0.5).to(torch.int8)  # 초기 Binary state
-        self.state_record = torch.zeros_like(self.state, dtype=torch.int8, device=self.device)
+        self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
+        self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary = tt.Tensor(binary, meta={'dx': (7.56e-6, 7.56e-6), 'wl': 515e-9})  # meta 정보 포함
@@ -129,22 +128,21 @@ class BinaryHologramEnv(gym.Env):
         result = torch.mean(sim, dim=1, keepdim=True)
 
         # MSE 및 PSNR 계산
-        #mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
+        mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        # 관찰값을 Tensor로 반환
-        obs = {
-            "state_record": self.state_record,
-            "state": self.state,
-            "pre_model": self.observation,
-            "recon_image": result,
-            "target_image": self.target_image,
-        }
+        state_record = self.state_record
+        state = self.state
+        pre_model = self.observation
+        target_image_np = self.target_image
+        result_np = result
+
+        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
-            #f"\nInitial MSE: {mse:.6f}\033[0m"
+            f"\nInitial MSE: {mse:.6f}\033[0m"
         )
 
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
@@ -181,14 +179,19 @@ class BinaryHologramEnv(gym.Env):
         sim_t = time.time() - sim_time
         print(f"Step: {self.steps:<6} |Time taken for simulate : {sim_t:.6f} seconds")
 
+        # 시뮬레이션 결과를 NumPy로 변환
+        numpy_time = time.time()
+        state_record = self.state_record
+        state = self.state
+        pre_model = self.observation
+        target_image_np = self.target_image
+        result_np = result_after
+
+        numpy_t = time.time() - numpy_time
+        print(f"Step: {self.steps:<6} | Time taken for NumPy : {numpy_t:.6f} seconds")
+
         obs_time = time.time()
-        obs = {
-            "state_record": self.state_record,
-            "state": self.state,
-            "pre_model": self.observation,
-            "recon_image": result_after,
-            "target_image": self.target_image,
-        }
+        obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
         obs_t = time.time() - obs_time
         print(f"Step: {self.steps:<6} | Time taken for obs : {obs_t:.6f} seconds")
 
@@ -210,29 +213,6 @@ class BinaryHologramEnv(gym.Env):
             self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
             self.flip_count -= 1
 
-            #success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
-
-            # 실패 정보 생성
-            #info = {
-            #    "psnr_before": psnr_before,
-            #    "psnr_after": psnr_after,
-            #    "psnr_change": psnr_change,
-            #    "psnr_diff": psnr_diff,
-            #    "pre_model_Value": pre_model_Value,
-            #    "state_before": self.state.copy(),  # 행동 이전 상태
-            #    "state_after": None,  # 실패한 경우에는 상태를 업데이트하지 않음
-            #    "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-            #    "observation_after": obs,
-            #    "failed_action": action,  # 실패한 행동
-            #    "flip_count": self.flip_count,  # 현재까지의 플립 횟수
-            #    "success_ratio": success_ratio,
-            #    "reward": reward,
-            #    "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
-            #    "simulation_result": result_np,  # 현재 시뮬레이션 결과
-            #    "step": self.steps,  # 현재 스텝
-            #}
-
-            #return obs, reward, False, False, info
             rollback_t = time.time() - rollback_time
             print(f"Step: {self.steps:<6} | Time taken for rollback : {rollback_t:.6f} seconds")
             self.step_time = time.time()
@@ -312,28 +292,7 @@ class BinaryHologramEnv(gym.Env):
 
         max_steps_t = time.time() - max_steps_time
         print(f"Step: {self.steps:<6} | Time taken for max_steps : {max_steps_t:.6f} seconds")
-        # 관찰값 업데이트
-        #info = {
-        #    "psnr_before": psnr_before,
-        #    "psnr_after": psnr_after,
-        #    "psnr_change": psnr_change,
-        #    "psnr_diff": psnr_diff,
-        #    "pre_model_Value": pre_model_Value,
-        #    "state_before": self.state.copy(),  # 행동 이전 상태
-        #    "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
-        #    "observation_before": self.observation.copy(),  # 행동 이전 관찰값
-        #    "observation_after": obs,
-        #    "failed_action": action if psnr_change < 0 else None,  # 실패한 행동
-        #    "flip_count": self.flip_count,  # 현재까지의 플립 횟수
-        #    "success_ratio": success_ratio,
-        #    "reward": reward,
-        #    "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
-        #    "simulation_result": result_np,  # 현재 시뮬레이션 결과
-        #    "action_coords": (channel, row, col),  # 행동한 좌표
-        #    "step": self.steps  # 현재 스텝
-        #}
 
         self.step_time = time.time()
 
-        #return obs, reward, terminated, truncated, info
         return obs, reward, terminated, truncated, {}  # 빈 딕셔너리 반환

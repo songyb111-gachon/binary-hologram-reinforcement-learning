@@ -85,6 +85,7 @@ class BinaryHologramEnv(gym.Env):
         # 에피소드 카운트
         self.episode_num_count = 0
 
+
     def reset(self, seed=None, options=None, z=2e-3):
         torch.cuda.empty_cache()
 
@@ -178,8 +179,6 @@ class BinaryHologramEnv(gym.Env):
         pre_model = self.observation
         target_image_np = self.target_image.cpu().numpy()
         result_np = result_after.cpu().numpy()
-        #target_image_np = self.target_image.cpu().numpy()
-        #result_np = result_after.cpu().numpy()
 
         obs = {"state_record": state_record, "state": state, "pre_model": pre_model, "recon_image": result_np, "target_image": target_image_np}
 
@@ -198,6 +197,29 @@ class BinaryHologramEnv(gym.Env):
             self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
             self.flip_count -= 1
 
+            #success_ratio = self.flip_count / self.steps if self.steps > 0 else 0
+
+            # 실패 정보 생성
+            #info = {
+            #    "psnr_before": psnr_before,
+            #    "psnr_after": psnr_after,
+            #    "psnr_change": psnr_change,
+            #    "psnr_diff": psnr_diff,
+            #    "pre_model_Value": pre_model_Value,
+            #    "state_before": self.state.copy(),  # 행동 이전 상태
+            #    "state_after": None,  # 실패한 경우에는 상태를 업데이트하지 않음
+            #    "observation_before": self.observation.copy(),  # 행동 이전 관찰값
+            #    "observation_after": obs,
+            #    "failed_action": action,  # 실패한 행동
+            #    "flip_count": self.flip_count,  # 현재까지의 플립 횟수
+            #    "success_ratio": success_ratio,
+            #    "reward": reward,
+            #    "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
+            #    "simulation_result": result_np,  # 현재 시뮬레이션 결과
+            #    "step": self.steps,  # 현재 스텝
+            #}
+
+            #return obs, reward, False, False, info
             return obs, reward, False, False, {}
 
         self.max_psnr_diff = max(self.max_psnr_diff, psnr_diff)  # 최고 PSNR_DIFF 업데이트
@@ -262,4 +284,26 @@ class BinaryHologramEnv(gym.Env):
         terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
         truncated = self.steps >= self.max_steps
 
+        # 관찰값 업데이트
+        #info = {
+        #    "psnr_before": psnr_before,
+        #    "psnr_after": psnr_after,
+        #    "psnr_change": psnr_change,
+        #    "psnr_diff": psnr_diff,
+        #    "pre_model_Value": pre_model_Value,
+        #    "state_before": self.state.copy(),  # 행동 이전 상태
+        #    "state_after": self.state.copy() if psnr_change >= 0 else None,  # 행동 성공 시 상태
+        #    "observation_before": self.observation.copy(),  # 행동 이전 관찰값
+        #    "observation_after": obs,
+        #    "failed_action": action if psnr_change < 0 else None,  # 실패한 행동
+        #    "flip_count": self.flip_count,  # 현재까지의 플립 횟수
+        #    "success_ratio": success_ratio,
+        #    "reward": reward,
+        #    "target_image": self.target_image.cpu().numpy(),  # 타겟 이미지
+        #    "simulation_result": result_np,  # 현재 시뮬레이션 결과
+        #    "action_coords": (channel, row, col),  # 행동한 좌표
+        #    "step": self.steps  # 현재 스텝
+        #}
+
+        #return obs, reward, terminated, truncated, info
         return obs, reward, terminated, truncated, {}  # 빈 딕셔너리 반환
