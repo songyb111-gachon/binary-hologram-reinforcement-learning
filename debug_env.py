@@ -41,10 +41,10 @@ class BinaryHologramEnv(gym.Env):
         # 관찰 공간 정보
         self.observation_space = spaces.Dict({
         #    "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
-            "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
-        #    "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
+        #    "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
+            "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
         #    "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
-        #    "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
         })
 
         # 행동 공간: 픽셀 하나를 선택하는 인덱스 (CH * IPS * IPS)
@@ -135,10 +135,10 @@ class BinaryHologramEnv(gym.Env):
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
         obs = {#"state_record": self.state_record,
-               "state": self.state,
-               #"pre_model": self.observation,
+               #"state": self.state,
+               "pre_model": self.observation,
                #"recon_image": result.cpu().numpy(),
-               #"target_image": self.target_image_np,
+               "target_image": self.target_image_np,
                }
 
         print(
@@ -184,10 +184,10 @@ class BinaryHologramEnv(gym.Env):
         # 시뮬레이션 결과를 NumPy로 변환
         obs_time = time.time()
         obs = {#"state_record": self.state_record,
-               "state": self.state,
-               #"pre_model": self.observation,
+               #"state": self.state,
+               "pre_model": self.observation,
                #"recon_image": result_after.cpu().numpy(),
-               #"target_image": self.target_image_np,
+               "target_image": self.target_image_np,
                }
         obs_t = time.time() - obs_time
         print(f"Step: {self.steps:<6} | Time obs: {obs_t:.6f} seconds")
