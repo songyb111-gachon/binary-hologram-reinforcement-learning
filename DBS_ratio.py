@@ -229,7 +229,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
         # Pre-model output 계산
         pre_model_output = obs["pre_model"]
-        pre_model_output = pre_model_output.squeeze().detach().cpu().numpy()
+        pre_model_output = pre_model_output.squeeze()  # 필요 시 차원 축소
 
 
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.5 단위로 증가)
