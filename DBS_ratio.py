@@ -288,7 +288,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                         f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                         f"\nTime taken for this data: {data_processing_time:.2f} seconds"
                     )
-                previous_psnr = psnr_after
 
                 # 플립 성공 픽셀의 pre-model output 값 확인
                 pre_value = pre_model_output[channel, row, col]
@@ -301,6 +300,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                             improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
                             psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
                         break
+
+                previous_psnr = psnr_after
 
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
