@@ -111,7 +111,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 매 에피소드마다 초기화
         self.max_psnr_diff = float('-inf')
-        self.steps = 0
+        self.steps = 1
         self.flip_count = 0
         self.psnr_sustained_steps = 0
         self.next_print_thresholds = 0
