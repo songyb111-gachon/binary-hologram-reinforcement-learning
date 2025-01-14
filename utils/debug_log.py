@@ -3,6 +3,7 @@ from tkinter import filedialog, simpledialog
 import re
 import pandas as pd
 
+
 # 파일 선택 GUI
 def select_log_file():
     root = tk.Tk()
@@ -10,12 +11,14 @@ def select_log_file():
     file_path = filedialog.askopenfilename(filetypes=[("Log files", "*.log")])
     return file_path
 
+
 # 스텝 범위 입력받기
 def get_step_range():
     root = tk.Tk()
     root.withdraw()  # GUI 창을 숨김
     step_range = simpledialog.askstring("Input", "Enter step range (e.g., 338-400):")
     return step_range
+
 
 # 로그 파일 처리 및 평균 시간 계산
 def process_log_file(file_path, start_step, end_step):
@@ -51,7 +54,11 @@ def process_log_file(file_path, start_step, end_step):
     avg_times = filtered_df.groupby('Action')['Time'].mean()
     counts = filtered_df.groupby('Action')['Step'].count()  # 범위 내 카운트 계산
     result = pd.DataFrame({'Average Time': avg_times, 'Count in Range': counts})
+
+    # 소수점 형식으로 출력
+    pd.set_option("display.float_format", "{:.6f}".format)
     return result
+
 
 # 실행 코드
 if __name__ == "__main__":
