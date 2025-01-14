@@ -299,8 +299,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                         bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                         if psnr_after > previous_psnr:
                             improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                        psnr_improvements[i].append(psnr_after - previous_psnr)  # 개선량 저장
-                    break
+                            psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+                        break
 
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
