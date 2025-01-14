@@ -228,7 +228,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         psnr_after = 0
 
         # Pre-model output 계산
-        pre_model_output = model(torch.tensor(current_state, dtype=torch.float32).cuda())
+        pre_model_output = obs["pre_model"]
         pre_model_output = pre_model_output.squeeze().detach().cpu().numpy()
 
 
