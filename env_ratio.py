@@ -146,7 +146,7 @@ class BinaryHologramEnv(gym.Env):
         )
 
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
-        self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
+        self.next_print_thresholds = [self.initial_psnr + i * 0.1 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
 
         self.output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
 
@@ -238,7 +238,7 @@ class BinaryHologramEnv(gym.Env):
                 self.bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                 if psnr_after > self.previous_psnr:
                     self.improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                    self.psnr_improvements[i].append(psnr_after - self.revious_psnr)  # PSNR 개선량 저장
+                    self.psnr_improvements[i].append(psnr_after - self.previous_psnr)  # PSNR 개선량 저장
                 break
 
         self.previous_psnr = psnr_after
