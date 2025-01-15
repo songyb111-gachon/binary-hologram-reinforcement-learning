@@ -253,10 +253,11 @@ class BinaryHologramEnv(gym.Env):
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
 
+            total_improved_pixels = sum(self.improved_bin_counts.values())
             total_count = self.bin_counts[i]
             improved_count = self.improved_bin_counts[i]
             improved_ratio = improved_count / total_count if total_count > 0 else 0
-            range_improved_ratio = improved_count / self.total_improved_pixels if self.total_improved_pixels > 0 else 0
+            range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
             total_psnr_improvement = sum(self.psnr_improvements[i]) if improved_count > 0 else 0
             avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
 
