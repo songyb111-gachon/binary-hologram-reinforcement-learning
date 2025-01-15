@@ -201,7 +201,7 @@ class Dataset512(Dataset):
 import numpy as np
 from collections import defaultdict
 
-def optimize_with_random_pixel_flips(env, z=2e-3):
+def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=5.0):
     db_num = 0
     max_datasets = 800  # 최대 데이터셋 처리 개수
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
@@ -248,12 +248,10 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
         print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
 
-        # 픽셀을 0.5에 가까운 순서로 정렬
-        num_channels, img_height, img_width = pre_model_output.shape
+        # 픽셀 크기 정보 가져오기
+        num_channels, img_height, img_width = current_state.shape[1:]
         all_pixels = np.arange(num_channels * img_height * img_width)
-        pixel_values = pre_model_output.flatten()
-        sorted_indices = np.argsort(np.abs(pixel_values - 0.5))  # 0.5에 가까운 순서로 정렬
-        sorted_pixels = all_pixels[sorted_indices]  # 정렬된 픽셀 순서
+        np.random.shuffle(all_pixels)  # 랜덤 순서로 픽셀 섞기
 
         # 모든 픽셀에 대해 한 번씩 시도
         for attempt, pixel in enumerate(all_pixels):
@@ -318,6 +316,13 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
                 state_ratio[0, channel, row, col] -= 1  # 롤백 시도 기록
+
+            psnr_diff = psnr_after - initial_psnr  # PSNR 상승량 계산
+
+            # PSNR 상승량 기준치 이상일 경우 반복 종료
+            if psnr_diff >= psnr_diff_threshold:
+                print(f"PSNR diff threshold {psnr_diff_threshold} reached at step {steps}. Stopping optimization.")
+                return
 
         # 성공 비율 계산
         success_ratio = flip_count / steps if steps > 0 else 0
