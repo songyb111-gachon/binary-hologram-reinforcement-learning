@@ -201,7 +201,7 @@ class Dataset512(Dataset):
 import numpy as np
 from collections import defaultdict
 
-def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=5.0):
+def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=0.5):
     db_num = 0
     max_datasets = 800  # 최대 데이터셋 처리 개수
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
@@ -319,10 +319,10 @@ def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=5.0):
 
             psnr_diff = psnr_after - initial_psnr  # PSNR 상승량 계산
 
-            # PSNR 상승량 기준치 이상일 경우 반복 종료
+            # PSNR 상승량 기준치 이상일 경우 다음 데이터셋으로 넘어가기
             if psnr_diff >= psnr_diff_threshold:
-                print(f"PSNR diff threshold {psnr_diff_threshold} reached at step {steps}. Stopping optimization.")
-                return
+                print(f"PSNR diff threshold {psnr_diff_threshold} reached at step {steps}. Moving to next dataset.")
+                break  # 현재 픽셀 루프를 종료하고 다음 데이터셋으로 넘어감
 
         # 성공 비율 계산
         success_ratio = flip_count / steps if steps > 0 else 0
