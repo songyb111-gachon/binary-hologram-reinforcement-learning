@@ -147,6 +147,23 @@ class BinaryHologramEnv(gym.Env):
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
         self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
 
+        self.output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
+
+        # Pre-model output 계산
+        self.pre_model_output = self.observation.squeeze()  # 필요 시 차원 축소
+
+        # 초기화: 특정 범위 값의 픽셀 개수와 PSNR 개선량 저장
+        self.bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
+        self.improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
+        self.psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
+
+        # 각 범위 값의 픽셀 개수 계산
+        for i in range(len(self.output_bins) - 1):
+            self.bin_counts[i] = np.logical_and(
+                self.pre_model_output >= self.output_bins[i],
+                self.pre_model_output < self.output_bins[i + 1]
+            ).sum()
+
         self.total_start_time = time.time()
 
         return obs, {"state": self.state}
@@ -210,6 +227,18 @@ class BinaryHologramEnv(gym.Env):
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
+
+        # 플립 성공 픽셀의 pre-model output 값 확인
+        pre_value = pre_model_output[channel, row, col]
+
+        # 범위에 따른 카운트 증가
+        for i in range(len(output_bins) - 1):
+            if output_bins[i] <= pre_value < output_bins[i + 1]:
+                bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
+                if psnr_after > previous_psnr:
+                    improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
+                    psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+                break
 
         self.previous_psnr = psnr_after
 
