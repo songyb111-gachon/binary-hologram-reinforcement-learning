@@ -270,6 +270,8 @@ class BinaryHologramEnv(gym.Env):
                       f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
                       f"Average PSNR Improvement = {avg_psnr_improvement:.6f}")
 
+            print("\n")
+
             if self.psnr_sustained_steps >= self.T_steps and psnr_diff >= self.T_PSNR_DIFF:  # 성공 에피소드 조건
                 # Goal-Reaching Reward or Penalty 함수
                 # 1 = +300, 1/2 = +100, 1/4 = -100, 1/8 = -300
