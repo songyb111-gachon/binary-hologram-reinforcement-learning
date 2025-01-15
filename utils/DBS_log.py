@@ -1,35 +1,31 @@
 import re
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, simpledialog
 
 
-def extract_psnr_step_524288(file_path):
+def extract_psnr_step(file_path, step_value):
     results = []
 
     with open(file_path, "r", encoding="utf-8") as file:
         content = file.read()
-        # 각 데이터셋의 Step: 524288의 정보를 추출하는 정규식
+        # 각 데이터셋의 Step: {step_value}의 정보를 추출하는 정규식
         matches = re.finditer(
-            r"Starting pixel flip optimization for file (\d+\.png) with initial PSNR: .*?"
-            r"Step: 524288\s+"
-            r"PSNR Before: (\d+\.\d+)\s+\|\s+PSNR After: (\d+\.\d+)\s+\|.*?"
-            r"Diff: (\d+\.\d+).*?"
-            r"Optimization completed\. Final PSNR improvement: (\d+\.\d+)",
+            rf"Starting pixel flip optimization for file (\d+\.png) with initial PSNR: .*?"
+            rf"Step: {step_value}\s+"
+            rf"PSNR Before: (\d+\.\d+)\s+\|\s+PSNR After: (\d+\.\d+)\s+\|.*?"
+            rf"Diff: (\d+\.\d+).*?"
+            rf"Optimization completed\. Final PSNR improvement: (\d+\.\d+)",
             content,
             re.DOTALL,
         )
         for match in matches:
             file_name = match.group(1)  # 파일 이름 (예: 1.png)
-            psnr_after = match.group(3)  # Step: 524288의 PSNR After 값
+            psnr_after = match.group(3)  # Step: {step_value}의 PSNR After 값
             psnr_improvement = match.group(5)  # 최종 PSNR 개선값
 
             # 파일 이름을 '001.png', '002.png' 형식으로 변경
             formatted_file_name = f"{int(file_name.split('.')[0]):04}.png"
 
-            # 결과 추가
-            #results.append(
-            #    f"{formatted_file_name} Optimization completed. Final PSNR improvement: {psnr_improvement}. PSNR After: {psnr_after}"
-            #)
             # 결과 추가
             results.append(
                 f"{formatted_file_name} | PSNR Diff: {psnr_improvement} | PSNR After: {psnr_after}"
@@ -38,6 +34,15 @@ def extract_psnr_step_524288(file_path):
 
 
 def open_file_and_extract():
+    # Step 값을 계산하기 위한 사용자 입력
+    try:
+        channels = int(simpledialog.askstring("Input", "Enter the number of channels:"))
+        image_size = int(simpledialog.askstring("Input", "Enter the image size:"))
+        step_value = channels * image_size * image_size
+    except (ValueError, TypeError):
+        print("Invalid input for channels or image size.")
+        return
+
     # 파일 선택 GUI 열기
     file_path = filedialog.askopenfilename(
         title="Select Log File",
@@ -48,7 +53,7 @@ def open_file_and_extract():
         return
 
     # PSNR 데이터 추출
-    results = extract_psnr_step_524288(file_path)
+    results = extract_psnr_step(file_path, step_value)
 
     # 결과 GUI 창에 표시
     result_window = tk.Toplevel()
