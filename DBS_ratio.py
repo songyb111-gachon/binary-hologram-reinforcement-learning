@@ -220,7 +220,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         total_start_time = time.time()
 
         current_state = obs["state"]
-        state_raito = np.zeros_like(current_state)
+        state_ratio = np.zeros_like(current_state)  # 픽셀별 플립 시도 기록
         target_image = obs["target_image"]
         initial_psnr = env.initial_psnr  # 초기 PSNR
         previous_psnr = initial_psnr
@@ -229,11 +229,21 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         psnr_after = 0
 
         # Pre-model output 계산
-        pre_model_output = obs["pre_model"]
-        pre_model_output = pre_model_output.squeeze()  # 필요 시 차원 축소
+        pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소
 
+        # 초기화: 특정 범위 값의 픽셀 개수와 PSNR 개선량 저장
+        bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
+        improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
+        psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
 
-        # 다음 출력 기준 PSNR 값 리스트 설정 (0.5 단위로 증가)
+        # 각 범위 값의 픽셀 개수 계산
+        for i in range(len(output_bins) - 1):
+            bin_counts[i] = np.logical_and(
+                pre_model_output >= output_bins[i],
+                pre_model_output < output_bins[i + 1]
+            ).sum()
+
+        # 다음 출력 기준 PSNR 값 리스트 설정
         next_print_thresholds = [initial_psnr + i * 0.5 for i in range(1, 21)]  # 최대 10.0 상승까지 출력
 
         print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
@@ -252,8 +262,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
             # 현재 상태의 픽셀 값을 플립
             current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
-            state_raito[0, channel, row, col] = state_raito[0, channel, row, col] + 1
-
+            state_ratio[0, channel, row, col] += 1
             steps += 1
 
             # 시뮬레이션 수행
@@ -306,14 +315,17 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
-                state_raito[0, channel, row, col] = state_raito[0, channel, row, col] - 1
+                state_ratio[0, channel, row, col] -= 1  # 롤백 시도 기록
+
+        # 성공 비율 계산
+        success_ratio = flip_count / steps if steps > 0 else 0
 
         # 최종 결과 출력
         psnr_diff = psnr_after - initial_psnr
         data_processing_time = time.time() - total_start_time
         print(
             f"Step: {steps}"
-            f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
+            f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_diff:.6f}"
             f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
             f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             f"\nTime taken for this data: {data_processing_time:.2f} seconds"
@@ -330,6 +342,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
             total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
             avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
+
             print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
                   f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
                   f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
