@@ -23,6 +23,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
+from collections import defaultdict
 
 IPS = 256  #이미지 픽셀 사이즈
 CH = 8  #채널
@@ -229,15 +230,15 @@ class BinaryHologramEnv(gym.Env):
             )
 
         # 플립 성공 픽셀의 pre-model output 값 확인
-        pre_value = pre_model_output[channel, row, col]
+        pre_value = self.pre_model_output[channel, row, col]
 
         # 범위에 따른 카운트 증가
-        for i in range(len(output_bins) - 1):
-            if output_bins[i] <= pre_value < output_bins[i + 1]:
-                bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
-                if psnr_after > previous_psnr:
-                    improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                    psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+        for i in range(len(self.output_bins) - 1):
+            if self.output_bins[i] <= pre_value < self.output_bins[i + 1]:
+                self.bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
+                if psnr_after > self.previous_psnr:
+                    self.improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
+                    self.psnr_improvements[i].append(psnr_after - self.revious_psnr)  # PSNR 개선량 저장
                 break
 
         self.previous_psnr = psnr_after
@@ -251,6 +252,20 @@ class BinaryHologramEnv(gym.Env):
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
+
+            total_count = self.bin_counts[i]
+            improved_count = self.improved_bin_counts[i]
+            improved_ratio = improved_count / total_count if total_count > 0 else 0
+            range_improved_ratio = improved_count / self.total_improved_pixels if self.total_improved_pixels > 0 else 0
+            total_psnr_improvement = sum(self.psnr_improvements[i]) if improved_count > 0 else 0
+            avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
+
+            print(f"Range {self.output_bins[i]:.1f}-{self.output_bins[i + 1]:.1f}: "
+                  f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
+                  f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
+                  f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
+                  f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
+                  f"Average PSNR Improvement = {avg_psnr_improvement:.6f}")
             self.psnr_sustained_steps += 1
 
             if self.psnr_sustained_steps >= self.T_steps and psnr_diff >= self.T_PSNR_DIFF:  # 성공 에피소드 조건
