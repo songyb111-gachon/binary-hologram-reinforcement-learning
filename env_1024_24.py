@@ -188,7 +188,17 @@ class BinaryHologramEnv(gym.Env):
         self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
+
+        # 형식 출력
+        print(f"Binary shape: {binary.shape}, dtype: {binary.dtype}, device: {binary.device}")
+
         binary, rgb = rgb_binary_sim(binary, z, 0.5)
+
+        print(f"RGB shape: {rgb.shape}, dtype: {rgb.dtype}, device: {rgb.device}")
+
+        # 형식 출력
+        print(f"Binary shape: {binary.shape}, dtype: {binary.dtype}, device: {binary.device}")
+        print(f"RGB shape: {rgb.shape}, dtype: {rgb.dtype}, device: {rgb.device}")
 
         # 타겟 이미지와 RGB 결과의 차원 일치 확인
         if rgb.shape != self.target_image.shape:
