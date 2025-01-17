@@ -37,6 +37,8 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
 
+import matplotlib.pyplot as plt
+
 from env_1024_24 import BinaryHologramEnv
 
 IPS = 1024  #이미지 픽셀 사이즈

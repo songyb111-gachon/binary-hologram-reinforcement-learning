@@ -24,6 +24,8 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
 
+import matplotlib.pyplot as plt
+
 IPS = 1024  #이미지 픽셀 사이즈
 CH = 24  #채널
 RW = 800  #보상
