@@ -191,10 +191,11 @@ class BinaryHologramEnv(gym.Env):
 
         # 시뮬레이션
         sim = rgb_binary_sim(binary, 2e-3, 0.5)
+        result = torch.mean(sim, dim=1, keepdim=True)
 
         # MSE 및 PSNR 계산
-        mse = tt.relativeLoss(sim, self.target_image, F.mse_loss).detach().cpu().numpy()
-        self.initial_psnr = tt.relativeLoss(sim, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
+        mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
+        self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
         obs = {"state_record": self.state_record,
@@ -236,7 +237,8 @@ class BinaryHologramEnv(gym.Env):
 
         # 시뮬레이션
         sim_after = rgb_binary_sim(binary_after, 2e-3, 0.5)
-        psnr_after = tt.relativeLoss(sim_after, self.target_image, tm.get_PSNR)
+        result_after = torch.mean(sim_after, dim=1, keepdim=True)
+        psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
 
         obs = {"state_record": self.state_record,
                "state": self.state,

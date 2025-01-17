@@ -37,7 +37,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
 
-from env_1024 import BinaryHologramEnv
+from env_1024_24 import BinaryHologramEnv
 
 IPS = 1024  #이미지 픽셀 사이즈
 CH = 24  #채널
@@ -330,13 +330,15 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             # 시뮬레이션
             sim_after = rgb_binary_sim(binary_after, 2e-3, 0.5)
 
+            result_after = torch.mean(sim_after, dim=1, keepdim=True)
+
             # Ensure `result_after` and `target_image` are Tensors
             if not isinstance(result_after, torch.Tensor):
                 result_after = torch.tensor(result_after, dtype=torch.float32).cuda()
             if not isinstance(target_image, torch.Tensor):
                 target_image = torch.tensor(target_image, dtype=torch.float32).cuda()
 
-            psnr_after = tt.relativeLoss(sim_after, target_image, tm.get_PSNR)
+            psnr_after = tt.relativeLoss(result_after, target_image, tm.get_PSNR)
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
