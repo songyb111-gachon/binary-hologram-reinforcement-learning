@@ -205,20 +205,30 @@ class BinaryHologramEnv(gym.Env):
                "target_image": self.target_image_np,
                }
 
-        # 시각화
-        rgb_np = rgb.cpu().numpy().squeeze().transpose(1, 2, 0)  # [C, H, W] -> [H, W, C]
-        target_np = self.target_image_np.squeeze()  # [1, H, W] -> [H, W]
+        # Reconstructed RGB 이미지를 matplotlib에 맞게 정규화
+        rgb_np = rgb.cpu().numpy().squeeze().transpose(1, 2, 0)  # (H, W, C)로 변환
+        rgb_np = np.clip(rgb_np, 0, 1)  # 값이 [0, 1] 범위 내에 있도록 제한
 
+        # Target RGB 이미지를 정규화
+        target_np = self.target_image_np.squeeze().transpose(1, 2, 0)  # (H, W, C)로 변환
+        if target_np.max() > 1.0:  # 만약 target 이미지 값이 [0, 255] 범위라면
+            target_np = np.clip(target_np / 255.0, 0, 1)  # [0, 1]로 정규화
+
+        # 이미지 출력
         plt.figure(figsize=(12, 6))
+
+        # Reconstructed RGB 이미지 출력
         plt.subplot(1, 2, 1)
-        plt.imshow(rgb_np, cmap='gray')
+        plt.imshow(rgb_np)  # Reconstructed RGB 이미지 출력
         plt.title("Reconstructed RGB Image")
         plt.axis("off")
 
+        # Target RGB 이미지 출력
         plt.subplot(1, 2, 2)
-        plt.imshow(target_np, cmap='gray')
-        plt.title("Target Image")
+        plt.imshow(target_np)  # Target RGB 이미지 출력
+        plt.title("Target RGB Image")
         plt.axis("off")
+
         plt.show()
 
         print(
