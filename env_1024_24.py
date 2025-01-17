@@ -196,7 +196,7 @@ class BinaryHologramEnv(gym.Env):
 
         print(f"RGB shape: {rgb.shape}, dtype: {rgb.dtype}, device: {rgb.device}")
 
-        print(f"target image shape: {self.target_image.shape}, dtype: {{self.target_image.dtype}, device: {{self.target_image.device}")
+        print(f"target image shape: {self.target_image.shape}, dtype: {self.target_image.dtype}, device: {self.target_image.device}")
 
         # 타겟 이미지와 RGB 결과의 차원 일치 확인
         if rgb.shape != self.target_image.shape:
