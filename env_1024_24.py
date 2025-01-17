@@ -189,20 +189,7 @@ class BinaryHologramEnv(gym.Env):
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
 
-        # 형식 출력
-        print(f"Binary shape: {binary.shape}, dtype: {binary.dtype}, device: {binary.device}")
-
         binary, rgb = rgb_binary_sim(binary, z, 0.5)
-
-        print(f"RGB shape: {rgb.shape}, dtype: {rgb.dtype}, device: {rgb.device}")
-
-        print(f"target image shape: {self.target_image.shape}, dtype: {self.target_image.dtype}, device: {self.target_image.device}")
-
-        # 타겟 이미지와 RGB 결과의 차원 일치 확인
-        if rgb.shape != self.target_image.shape:
-            raise ValueError(
-                f"Dimension mismatch between RGB result {rgb.shape} and target image {self.target_image.shape}."
-            )
 
         # MSE 및 PSNR 계산
         mse = tt.relativeLoss(rgb, self.target_image, F.mse_loss).detach().cpu().numpy()
@@ -243,16 +230,16 @@ class BinaryHologramEnv(gym.Env):
 
         self.flip_count += 1  # 플립 증가
 
-        # 시뮬레이션 수행
-        binary_after = torch.tensor(self.state, dtype=torch.float32).cuda()
-        binary_after, rgb_after = rgb_binary_sim(binary_after, z, 0.5)
+        binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
 
-        psnr_after = tt.relativeLoss(rgb_after, self.target_image, tm.get_PSNR)
+        binary, rgb = rgb_binary_sim(binary, z, 0.5)
+
+        psnr_after = tt.relativeLoss(rgb, self.target_image, tm.get_PSNR)
 
         obs = {"state_record": self.state_record,
                "state": self.state,
                "pre_model": self.observation,
-               "recon_image": rgb_after.cpu().numpy(),
+               "recon_image": rgb.cpu().numpy(),
                "target_image": self.target_image_np,
                }
 
