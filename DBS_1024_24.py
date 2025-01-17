@@ -329,13 +329,14 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
             # 시뮬레이션
             sim_after = rgb_binary_sim(binary_after, 2e-3, 0.5)
-            psnr_after = tt.relativeLoss(sim_after, self.target_image, tm.get_PSNR)
 
             # Ensure `result_after` and `target_image` are Tensors
             if not isinstance(result_after, torch.Tensor):
                 result_after = torch.tensor(result_after, dtype=torch.float32).cuda()
             if not isinstance(target_image, torch.Tensor):
                 target_image = torch.tensor(target_image, dtype=torch.float32).cuda()
+
+            psnr_after = tt.relativeLoss(sim_after, target_image, tm.get_PSNR)
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
