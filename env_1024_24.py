@@ -214,7 +214,7 @@ class BinaryHologramEnv(gym.Env):
         if target_np.max() > 1.0:  # 만약 target 이미지 값이 [0, 255] 범위라면
             target_np = np.clip(target_np / 255.0, 0, 1)  # [0, 1]로 정규화
 
-        # 이미지 출력
+        # 이미지 출력 및 저장
         plt.figure(figsize=(12, 6))
 
         # Reconstructed RGB 이미지 출력
@@ -229,7 +229,14 @@ class BinaryHologramEnv(gym.Env):
         plt.title("Target RGB Image")
         plt.axis("off")
 
+        # 화면에 출력
         plt.show()
+
+        # 이미지 저장
+        save_path = f"output_images/episode_{self.episode_num_count}_comparison.png"
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)  # 저장 디렉토리 생성
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"이미지가 저장되었습니다: {save_path}")
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"

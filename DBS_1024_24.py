@@ -391,6 +391,38 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
         print("Pre-model output range statistics:")
 
+        # Reconstructed RGB 이미지를 matplotlib에 맞게 정규화
+        rgb_np = rgb.cpu().numpy().squeeze().transpose(1, 2, 0)  # (H, W, C)로 변환
+        rgb_np = np.clip(rgb_np, 0, 1)  # 값이 [0, 1] 범위 내에 있도록 제한
+
+        target_np = target_image.cpu().numpy().squeeze().transpose(1, 2, 0) # (H, W, C)로 변환
+        if target_np.max() > 1.0:  # 만약 target 이미지 값이 [0, 255] 범위라면
+            target_np = np.clip(target_np / 255.0, 0, 1)  # [0, 1]로 정규화
+
+        # 이미지 출력 및 저장
+        plt.figure(figsize=(12, 6))
+
+        # Reconstructed RGB 이미지 출력
+        plt.subplot(1, 2, 1)
+        plt.imshow(rgb_np)  # Reconstructed RGB 이미지 출력
+        plt.title("Reconstructed RGB Image")
+        plt.axis("off")
+
+        # Target RGB 이미지 출력
+        plt.subplot(1, 2, 2)
+        plt.imshow(target_np)  # Target RGB 이미지 출력
+        plt.title("Target RGB Image")
+        plt.axis("off")
+
+        # 화면에 출력
+        plt.show()
+
+        # 이미지 저장
+        save_path = f"output_images/episode_{db_num}_comparison.png"
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)  # 저장 디렉토리 생성
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"이미지가 저장되었습니다: {save_path}")
+
         total_improved_pixels = sum(improved_bin_counts.values())
         for i in range(len(output_bins) - 1):
             total_count = bin_counts[i]
