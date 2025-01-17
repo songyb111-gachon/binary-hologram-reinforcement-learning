@@ -203,7 +203,21 @@ class BinaryHologramEnv(gym.Env):
                "target_image": self.target_image_np,
                }
 
-        tt.show(rgb)
+        # 시각화
+        rgb_np = rgb.cpu().numpy().squeeze().transpose(1, 2, 0)  # [C, H, W] -> [H, W, C]
+        target_np = self.target_image_np.squeeze()  # [1, H, W] -> [H, W]
+
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 2, 1)
+        plt.imshow(rgb_np, cmap='gray')
+        plt.title("Reconstructed RGB Image")
+        plt.axis("off")
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(target_np, cmap='gray')
+        plt.title("Target Image")
+        plt.axis("off")
+        plt.show()
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
