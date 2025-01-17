@@ -188,7 +188,7 @@ class BinaryHologramEnv(gym.Env):
         self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
-        binary, rgb = rgb_binary_sim(binary, z)
+        binary, rgb = rgb_binary_sim(binary, z, 0.5)
 
         # MSE 및 PSNR 계산
         mse = tt.relativeLoss(binary, self.target_image, F.mse_loss).detach().cpu().numpy()
@@ -231,7 +231,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 시뮬레이션 수행
         binary_after = torch.tensor(self.state, dtype=torch.float32).cuda()
-        binary_after, rgb_after = rgb_binary_sim(binary_after, z)
+        binary_after, rgb_after = rgb_binary_sim(binary_after, z, 0.5)
 
         psnr_after = tt.relativeLoss(binary_after, self.target_image, tm.get_PSNR)
 

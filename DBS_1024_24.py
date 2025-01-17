@@ -326,7 +326,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
             # 시뮬레이션 수행
             binary_after = torch.tensor(current_state, dtype=torch.float32).cuda()
-            binary_after, rgb_after = rgb_binary_sim(binary_after, z)
+            binary_after, rgb_after = rgb_binary_sim(binary_after, z, 0.5)
 
 
             # Ensure `result_after` and `target_image` are Tensors
