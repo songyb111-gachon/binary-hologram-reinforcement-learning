@@ -33,6 +33,38 @@ warnings.filterwarnings('ignore')
 # 현재 날짜와 시간을 가져와 포맷 지정
 current_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+class SignFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, th):
+        ctx.save_for_backward(input)
+        t = torch.Tensor([th]).to(input.device)  # threshold
+        output = (input > t).float() * 1
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
+        return grad_input
+
+class RealSign(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        output = torch.sign(input)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
+        return grad_input
+
+def binary_sim(out, z=2e-3):
+    binary = SignFunction.apply(out)
+    sim = tt.simulate(binary, z).abs()**2
+    res = torch.mean(sim, dim=1, keepdim=True)
+    return binary, res
+
 def rgb_binary_sim(out, z, th):
     pixel_pitch = 7.56e-6
     meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(pixel_pitch, pixel_pitch)}
@@ -159,11 +191,10 @@ class BinaryHologramEnv(gym.Env):
 
         # 시뮬레이션
         sim = rgb_binary_sim(binary, 2e-3, 0.5)
-        result = torch.mean(sim, dim=1, keepdim=True)
 
         # MSE 및 PSNR 계산
-        mse = tt.relativeLoss(result, self.target_image, F.mse_loss).detach().cpu().numpy()
-        self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
+        mse = tt.relativeLoss(sim, self.target_image, F.mse_loss).detach().cpu().numpy()
+        self.initial_psnr = tt.relativeLoss(sim, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
         obs = {"state_record": self.state_record,
@@ -205,8 +236,7 @@ class BinaryHologramEnv(gym.Env):
 
         # 시뮬레이션
         sim_after = rgb_binary_sim(binary_after, 2e-3, 0.5)
-        result_after = torch.mean(sim_after, dim=1, keepdim=True)
-        psnr_after = tt.relativeLoss(result_after, self.target_image, tm.get_PSNR)
+        psnr_after = tt.relativeLoss(sim_after, self.target_image, tm.get_PSNR)
 
         obs = {"state_record": self.state_record,
                "state": self.state,

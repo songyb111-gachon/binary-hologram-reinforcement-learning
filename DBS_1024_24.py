@@ -43,6 +43,38 @@ IPS = 1024  #이미지 픽셀 사이즈
 CH = 24  #채널
 RW = 800  #보상
 
+class SignFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, th):
+        ctx.save_for_backward(input)
+        t = torch.Tensor([th]).to(input.device)  # threshold
+        output = (input > t).float() * 1
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
+        return grad_input
+
+class RealSign(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        output = torch.sign(input)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
+        return grad_input
+
+def binary_sim(out, z=2e-3):
+    binary = SignFunction.apply(out)
+    sim = tt.simulate(binary, z).abs()**2
+    res = torch.mean(sim, dim=1, keepdim=True)
+    return binary, res
+
 def rgb_binary_sim(out, z, th):
     pixel_pitch = 7.56e-6
     meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(pixel_pitch, pixel_pitch)}
@@ -297,15 +329,13 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
             # 시뮬레이션
             sim_after = rgb_binary_sim(binary_after, 2e-3, 0.5)
-            result_after = torch.mean(sim_after, dim=1, keepdim=True)
+            psnr_after = tt.relativeLoss(sim_after, self.target_image, tm.get_PSNR)
 
             # Ensure `result_after` and `target_image` are Tensors
             if not isinstance(result_after, torch.Tensor):
                 result_after = torch.tensor(result_after, dtype=torch.float32).cuda()
             if not isinstance(target_image, torch.Tensor):
                 target_image = torch.tensor(target_image, dtype=torch.float32).cuda()
-
-            psnr_after = tt.relativeLoss(result_after, target_image, tm.get_PSNR)
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
@@ -382,7 +412,7 @@ batch_size = 1
 #target_dir = 'dataset1/'
 target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
 valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
-meta = {'wl' : (638e-9, 515e-9, 450e-9, 638e-9, 515e-9, 450e-9, 638e-9, 515e-9, 450e-9, 638e-9, 515e-9, 450e-9, 638e-9, 515e-9, 450e-9 , 638e-9, 515e-9, 450e-9, 638e-9, 515e-9, 450e-9, 638e-9, 515e-9, 450e-9), 'dx':(7.56e-6, 7.56e-6)}
+meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(7.56e-6, 7.56e-6)}
 padding = 0
 
 # Dataset512 클래스 사용
