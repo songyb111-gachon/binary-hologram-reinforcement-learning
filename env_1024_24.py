@@ -192,13 +192,13 @@ class BinaryHologramEnv(gym.Env):
 
         # MSE 및 PSNR 계산
         mse = tt.relativeLoss(binary, self.target_image, F.mse_loss).detach().cpu().numpy()
-        self.initial_psnr = tt.relativeLoss(binary, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
+        self.initial_psnr = tt.relativeLoss(rgb, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
         obs = {"state_record": self.state_record,
                "state": self.state,
                "pre_model": self.observation,
-               "recon_image": binary.cpu().numpy(),
+               "recon_image": rgb.cpu().numpy(),
                "target_image": self.target_image_np,
                }
 
