@@ -233,12 +233,12 @@ class BinaryHologramEnv(gym.Env):
         binary_after = torch.tensor(self.state, dtype=torch.float32).cuda()
         binary_after, rgb_after = rgb_binary_sim(binary_after, z, 0.5)
 
-        psnr_after = tt.relativeLoss(binary_after, self.target_image, tm.get_PSNR)
+        psnr_after = tt.relativeLoss(rgb_after, self.target_image, tm.get_PSNR)
 
         obs = {"state_record": self.state_record,
                "state": self.state,
                "pre_model": self.observation,
-               "recon_image": binary_after.cpu().numpy(),
+               "recon_image": rgb_after.cpu().numpy(),
                "target_image": self.target_image_np,
                }
 
