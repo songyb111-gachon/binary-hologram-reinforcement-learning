@@ -329,8 +329,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             binary, rgb = rgb_binary_sim(binary, z, 0.5)
 
             # Ensure `result_after` and `target_image` are Tensors
-            if not isinstance(binary_after, torch.Tensor):
-                binary_after = torch.tensor(binary_after, dtype=torch.float32).cuda()
+            if not isinstance(rgb, torch.Tensor):
+                rgb = torch.tensor(rgb, dtype=torch.float32).cuda()
             if not isinstance(target_image, torch.Tensor):
                 target_image = torch.tensor(target_image, dtype=torch.float32).cuda()
 
