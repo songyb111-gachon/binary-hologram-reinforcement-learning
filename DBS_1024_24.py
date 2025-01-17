@@ -324,7 +324,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
             steps += 1
 
-            binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
+            binary = torch.tensor(current_state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
 
             binary, rgb = rgb_binary_sim(binary, z, 0.5)
 
