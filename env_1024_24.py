@@ -190,6 +190,12 @@ class BinaryHologramEnv(gym.Env):
         binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
         binary, rgb = rgb_binary_sim(binary, z, 0.5)
 
+        # 타겟 이미지와 RGB 결과의 차원 일치 확인
+        if rgb.shape != self.target_image.shape:
+            raise ValueError(
+                f"Dimension mismatch between RGB result {rgb.shape} and target image {self.target_image.shape}."
+            )
+
         # MSE 및 PSNR 계산
         mse = tt.relativeLoss(binary, self.target_image, F.mse_loss).detach().cpu().numpy()
         self.initial_psnr = tt.relativeLoss(rgb, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
