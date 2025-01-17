@@ -4,11 +4,6 @@ import re
 import numpy as np
 from collections import defaultdict
 
-import re
-from collections import defaultdict
-from tkinter import messagebox
-
-
 # 로그 파일에서 데이터 추출
 def parse_log_file(file_path, step_unit, max_step):
     step_data = defaultdict(list)
@@ -47,7 +42,6 @@ def parse_log_file(file_path, step_unit, max_step):
                             "time_taken": time_taken,
                         })
                     except (ValueError, IndexError) as e:
-                        # 데이터 변환 오류 시 건너뛰기
                         print(f"Error parsing entry: {match.group(0)}\n{e}")
     except FileNotFoundError:
         messagebox.showerror("Error", f"File not found: {file_path}")
@@ -65,7 +59,6 @@ def calculate_stats(values):
     std_err = std_dev / np.sqrt(len(values))  # 표준오차
     return mean, std_dev, std_err
 
-
 # 파일 열기 및 처리
 def open_file():
     file_path = filedialog.askopenfilename(
@@ -82,7 +75,8 @@ def open_file():
             step_data = parse_log_file(file_path, step_unit, max_step)
             if not step_data:
                 messagebox.showinfo("Info", "No matching steps found in the log file.")
-                result_text.set("No data found in the log file.")
+                result_text.delete("1.0", tk.END)
+                result_text.insert(tk.END, "No data found in the log file.")
                 return
 
             results = []
@@ -97,7 +91,6 @@ def open_file():
                 reward_mean, reward_std_dev, reward_std_err = calculate_stats(reward_values)
                 time_mean, time_std_dev, time_std_err = calculate_stats(time_values)
 
-
                 results.append(
                     f"Step: {step}\n"
                     f"  PSNR Diff - Mean: {psnr_diff_mean:.6f}, Standard Deviation: {psnr_diff_std_dev:.6f}, "
@@ -109,7 +102,8 @@ def open_file():
                     f"  Time - Mean: {time_mean:.6f}\n"
                 )
 
-            result_text.set("\n".join(results))
+            result_text.delete("1.0", tk.END)
+            result_text.insert(tk.END, "\n".join(results))
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
@@ -128,11 +122,19 @@ step_unit_entry.insert(0, "100")
 tk.Label(frame, text="Max Step:").grid(row=1, column=0, sticky="e")
 max_step_entry = tk.Entry(frame)
 max_step_entry.grid(row=1, column=1)
-max_step_entry.insert(0, "1100")
+max_step_entry.insert(0, "3000")
 
 tk.Button(frame, text="Select Log File", command=open_file).grid(row=2, column=0, columnspan=2, pady=10)
 
-result_text = tk.StringVar()
-tk.Label(root, textvariable=result_text, justify="left", padx=10, pady=10, wraplength=600).pack()
+# 텍스트 위젯에 스크롤바 추가
+result_frame = tk.Frame(root)
+result_frame.pack(fill="both", expand=True)
+
+scrollbar = tk.Scrollbar(result_frame)
+scrollbar.pack(side="right", fill="y")
+
+result_text = tk.Text(result_frame, wrap="word", height=20, width=92, padx=10, pady=10, yscrollcommand=scrollbar.set)
+result_text.pack(side="left", fill="both", expand=True)
+scrollbar.config(command=result_text.yview)
 
 root.mainloop()
