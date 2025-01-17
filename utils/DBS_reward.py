@@ -4,43 +4,57 @@ import re
 import numpy as np
 from collections import defaultdict
 
+import re
+from collections import defaultdict
+from tkinter import messagebox
+
 
 # 로그 파일에서 데이터 추출
 def parse_log_file(file_path, step_unit, max_step):
     step_data = defaultdict(list)
+
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
 
             # 정규표현식으로 데이터 매칭
             step_matches = re.finditer(
-                r"Step:\s+(\d+)\s+"
-                r"PSNR Before:\s+[\d.]+\s+\|\s+PSNR After:\s+[\d.]+\s+\|\s+Change:\s+[\d.e+-]+\s+\|\s+Diff:\s+([\d.e+-]+)\s+"
-                r"Success Ratio:\s+([\d.]+)\s+\|\s+Flip Count:\s+(\d+)\s+.*?"
-                r"Time taken for this data:\s+([\d.]+)\s+seconds",
+                r"Step:\s+(\d+)\s+"  # Step
+                r"PSNR Before:\s+[\d.]+\s+\|\s+PSNR After:\s+[\d.]+\s+\|\s+Change:\s+[\d.e+-]+\s+\|\s+Diff:\s+([\d.e+-]+)\s+"  # PSNR and Diff
+                r"Success Ratio:\s+([\d.]+)\s+\|\s+Flip Count:\s+(\d+)\s+.*?"  # Success Ratio and Flip Count
+                r"Reward :\s+([\d.e+-]+)\s+"  # Reward
+                r"Time taken for this data:\s+([\d.]+)\s+seconds",  # Time taken
                 content,
                 re.DOTALL,
             )
 
             for match in step_matches:
-                step = int(match.group(1))
+                step = int(match.group(1))  # 스텝 값
                 if step % step_unit == 0 and step <= max_step:
-                    psnr_diff = float(match.group(2))
-                    success_ratio = float(match.group(3))
-                    flip_count = int(match.group(4))
-                    time_taken = float(match.group(5))
+                    try:
+                        psnr_diff = float(match.group(2))  # PSNR 차이값
+                        success_ratio = float(match.group(3))  # 성공률
+                        flip_count = int(match.group(4))  # Flip Count
+                        reward = float(match.group(5))  # Reward 값
+                        time_taken = float(match.group(6))  # 데이터 처리 시간
 
-                    # 스텝별로 데이터를 그룹화
-                    step_data[step].append({
-                        "psnr_diff": psnr_diff,
-                        "success_ratio": success_ratio,
-                        "flip_count": flip_count,
-                        "time_taken": time_taken,
-                    })
+                        # 스텝별로 데이터를 그룹화
+                        step_data[step].append({
+                            "psnr_diff": psnr_diff,
+                            "success_ratio": success_ratio,
+                            "flip_count": flip_count,
+                            "reward": reward,
+                            "time_taken": time_taken,
+                        })
+                    except (ValueError, IndexError) as e:
+                        # 데이터 변환 오류 시 건너뛰기
+                        print(f"Error parsing entry: {match.group(0)}\n{e}")
+    except FileNotFoundError:
+        messagebox.showerror("Error", f"File not found: {file_path}")
     except UnicodeDecodeError:
         messagebox.showerror("Error", "File encoding issue. Please ensure the file is UTF-8 encoded.")
-    return step_data
 
+    return step_data
 
 # 표준편차, 표준오차 및 평균 계산
 def calculate_stats(values):
@@ -75,9 +89,14 @@ def open_file():
             for step, data_list in sorted(step_data.items()):
                 psnr_diff_values = [d["psnr_diff"] for d in data_list]
                 success_ratio_values = [d["success_ratio"] for d in data_list]
+                reward_values = [d["reward"] for d in data_list]
+                time_values = [d["time_taken"] for d in data_list]
 
                 psnr_diff_mean, psnr_diff_std_dev, psnr_diff_std_err = calculate_stats(psnr_diff_values)
                 success_ratio_mean, success_ratio_std_dev, success_ratio_std_err = calculate_stats(success_ratio_values)
+                reward_mean, reward_std_dev, reward_std_err = calculate_stats(reward_values)
+                time_mean, time_std_dev, time_std_err = calculate_stats(time_values)
+
 
                 results.append(
                     f"Step: {step}\n"
@@ -85,6 +104,9 @@ def open_file():
                     f"Standard Error: {psnr_diff_std_err:.6f}\n"
                     f"  Success Ratio - Mean: {success_ratio_mean:.6f}, Standard Deviation: {success_ratio_std_dev:.6f}, "
                     f"Standard Error: {success_ratio_std_err:.6f}\n"
+                    f"  Reward - Mean: {reward_mean:.6f}, Standard Deviation: {reward_std_dev:.6f}, "
+                    f"Standard Error: {reward_std_err:.6f}\n"
+                    f"  Time - Mean: {time_mean:.6f}\n"
                 )
 
             result_text.set("\n".join(results))
@@ -106,7 +128,7 @@ step_unit_entry.insert(0, "100")
 tk.Label(frame, text="Max Step:").grid(row=1, column=0, sticky="e")
 max_step_entry = tk.Entry(frame)
 max_step_entry.grid(row=1, column=1)
-max_step_entry.insert(0, "1000")
+max_step_entry.insert(0, "1100")
 
 tk.Button(frame, text="Select Log File", command=open_file).grid(row=2, column=0, columnspan=2, pady=10)
 
