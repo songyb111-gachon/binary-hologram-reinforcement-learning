@@ -204,12 +204,9 @@ import numpy as np
 from collections import defaultdict
 
 def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
-    db_num = 800
-    max_datasets = 800  # 최대 데이터셋 처리 개수
+    db_num = 0
+    max_datasets = 8  # 최대 데이터셋 처리 개수
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
-    bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
-    improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
-    psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
 
     while db_num <= max_datasets:
         try:
@@ -266,6 +263,18 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
         improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
         psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
+
+        # 저장 경로 설정
+        dbs_folder = "DBS"
+        os.makedirs(dbs_folder, exist_ok=True)  # 폴더가 없으면 생성
+
+        # Reconstructed RGB 이미지를 numpy 배열로 변환 및 저장
+        rgb_np = rgb.cpu().numpy()  # RGB 데이터를 NumPy 배열로 변환
+        save_path_rgb = os.path.join(dbs_folder, f"episode_{db_num}_rgb_before.npy")  # 저장 경로 설정
+
+        # NumPy 배열로 저장
+        np.save(save_path_rgb, rgb_np)
+        print(f"RGB data saved to {save_path_rgb}")
 
         # 각 범위 값의 픽셀 개수 계산
         for i in range(len(output_bins) - 1):
@@ -404,37 +413,17 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
         print("Pre-model output range statistics:")
 
-        # Reconstructed RGB 이미지를 matplotlib에 맞게 정규화
-        rgb_np = rgb.cpu().numpy().squeeze().transpose(1, 2, 0)  # (H, W, C)로 변환
-        rgb_np = np.clip(rgb_np, 0, 1)  # 값이 [0, 1] 범위 내에 있도록 제한
+        # 저장 경로 설정
+        dbs_folder = "DBS"
+        os.makedirs(dbs_folder, exist_ok=True)  # 폴더가 없으면 생성
 
-        target_np = target_image.cpu().numpy().squeeze().transpose(1, 2, 0) # (H, W, C)로 변환
-        if target_np.max() > 1.0:  # 만약 target 이미지 값이 [0, 255] 범위라면
-            target_np = np.clip(target_np / 255.0, 0, 1)  # [0, 1]로 정규화
+        # Reconstructed RGB 이미지를 numpy 배열로 변환 및 저장
+        rgb_np = rgb.cpu().numpy()  # RGB 데이터를 NumPy 배열로 변환
+        save_path_rgb = os.path.join(dbs_folder, f"episode_{db_num}_rgb_after.npy")  # 저장 경로 설정
 
-        # 이미지 출력 및 저장
-        plt.figure(figsize=(12, 6))
-
-        # Reconstructed RGB 이미지 출력
-        plt.subplot(1, 2, 1)
-        plt.imshow(rgb_np)  # Reconstructed RGB 이미지 출력
-        plt.title("Reconstructed RGB Image")
-        plt.axis("off")
-
-        # Target RGB 이미지 출력
-        plt.subplot(1, 2, 2)
-        plt.imshow(target_np)  # Target RGB 이미지 출력
-        plt.title("Target RGB Image")
-        plt.axis("off")
-
-        # 화면에 출력
-        plt.show()
-
-        # 이미지 저장
-        save_path = f"output_images/episode_{db_num}_comparison.png"
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)  # 저장 디렉토리 생성
-        plt.savefig(save_path, bbox_inches='tight')
-        print(f"이미지가 저장되었습니다: {save_path}")
+        # NumPy 배열로 저장
+        np.save(save_path_rgb, rgb_np)
+        print(f"RGB data saved to {save_path_rgb}")
 
         total_improved_pixels = sum(improved_bin_counts.values())
         for i in range(len(output_bins) - 1):
