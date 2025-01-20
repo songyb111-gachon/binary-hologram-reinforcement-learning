@@ -268,9 +268,19 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         dbs_folder = "DBS"
         os.makedirs(dbs_folder, exist_ok=True)  # 폴더가 없으면 생성
 
+        a, imgname = next(iter(valid_loader))
+
+        # imgname에서 파일 이름 추출
+        if isinstance(imgname, list) or isinstance(imgname, tuple):
+            imgname = imgname[0]  # imgname이 리스트나 튜플인 경우 첫 번째 요소 선택
+
+        # 파일 이름만 추출
+        file_name = os.path.basename(imgname)  # 경로에서 파일 이름 추출
+        file_name = os.path.splitext(file_name)[0]  # 확장자 제거 (ex: "0814")
+
         # Reconstructed RGB 이미지를 numpy 배열로 변환 및 저장
         rgb_np = rgb.cpu().numpy()  # RGB 데이터를 NumPy 배열로 변환
-        save_path_rgb = os.path.join(dbs_folder, f"episode_{db_num}_rgb_before.npy")  # 저장 경로 설정
+        save_path_rgb = os.path.join(dbs_folder, f"episode_{file_name}png_rgb_before.npy")  # 저장 경로 설정
 
         # NumPy 배열로 저장
         np.save(save_path_rgb, rgb_np)
@@ -286,7 +296,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         # 다음 출력 기준 PSNR 값 리스트 설정
         next_print_thresholds = [initial_psnr + i * 0.01 for i in range(1, 101)]  # 최대 10.0 상승까지 출력
 
-        print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
+        print(f"Starting pixel flip optimization for file {file_name}.png with initial PSNR: {initial_psnr:.6f}")
 
         # 픽셀 크기 정보 가져오기
         num_channels, img_height, img_width = current_state.shape[1:]
