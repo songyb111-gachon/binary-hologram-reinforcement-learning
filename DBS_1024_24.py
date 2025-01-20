@@ -230,9 +230,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         flip_count = 0
         psnr_after = 0
 
-        rmean = rmean
-        bmean = bmean
-        gmean = gmean
+        rmean = env.rmean
+        gmean = env.gmean
+        bmean = env.bmean
 
         # Pre-model output 계산
         pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소

@@ -75,6 +75,9 @@ class BinaryHologramEnv(gym.Env):
         self.total_start_time = None
         self.target_image_np = None
         self.initial_psnr = None
+        self.rmean = None
+        self.gmean = None
+        self.bmean = None
 
         # 최고 PSNR_DIFF 추적 변수
         self.max_psnr_diff = float('-inf')  # 가장 높은 PSNR_DIFF를 추적
@@ -151,9 +154,9 @@ class BinaryHologramEnv(gym.Env):
         gsim = tt.simulate(green, z).abs() ** 2
         bsim = tt.simulate(blue, z).abs() ** 2
 
-        rmean = torch.mean(rsim, dim=1, keepdim=True)
-        gmean = torch.mean(gsim, dim=1, keepdim=True)
-        bmean = torch.mean(bsim, dim=1, keepdim=True)
+        self.rmean = torch.mean(rsim, dim=1, keepdim=True)
+        self.gmean = torch.mean(gsim, dim=1, keepdim=True)
+        self.bmean = torch.mean(bsim, dim=1, keepdim=True)
 
         rgb = torch.cat([rmean, gmean, bmean], dim=1)
         rgb = tt.Tensor(rgb, meta=meta)
@@ -187,7 +190,7 @@ class BinaryHologramEnv(gym.Env):
 
         self.total_start_time = time.time()
 
-        return obs, {"state": self.state}, rmean, gmean, bmean
+        return obs, {"state": self.state}
 
     def step(self, action, z=2e-3, pixel_pitch=7.56e-6):
         self.steps += 1
