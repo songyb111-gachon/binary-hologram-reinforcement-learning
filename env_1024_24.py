@@ -172,13 +172,6 @@ class BinaryHologramEnv(gym.Env):
                "recon_image": rgb.cpu().numpy(),
                "target_image": self.target_image_np,
                }
-        crop = torchvision.transforms.CenterCrop(1024-128)
-
-        sim = rgb
-
-        target = self.target_image
-
-        tt.show_with_insets(crop(sim), crop(target), correct_colorwise=True)
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"

@@ -230,9 +230,44 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         flip_count = 0
         psnr_after = 0
 
-        rmean = env.rmean
-        gmean = env.gmean
-        bmean = env.bmean
+        meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
+
+        rgbchannel = current_state.shape[1]
+
+        rchannel = int(rgbchannel / 3)
+        gchannel = int(rgbchannel * 2 / 3)
+
+        red = current_state[:, :rchannel, :, :]
+        green = current_state[:, rchannel:gchannel, :, :]
+        blue = current_state[:, gchannel:, :, :]
+
+        red = tt.Tensor(red, meta=rmeta)
+        green = tt.Tensor(green, meta=gmeta)
+        blue = tt.Tensor(blue, meta=bmeta)
+
+        rsim = tt.simulate(red, z).abs() ** 2
+        gsim = tt.simulate(green, z).abs() ** 2
+        bsim = tt.simulate(blue, z).abs() ** 2
+
+        rmean = torch.mean(rsim, dim=1, keepdim=True)
+        gmean = torch.mean(gsim, dim=1, keepdim=True)
+        bmean = torch.mean(bsim, dim=1, keepdim=True)
+
+        rgb = torch.cat([rmean, gmean, bmean], dim=1)
+        rgb = tt.Tensor(rgb, meta=meta)
+
+        # MSE 및 PSNR 계산
+        mse = tt.relativeLoss(rgb, target_image_cuda, F.mse_loss).detach().cpu().numpy()
+        initial_psnr = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+        previous_psnr = initial_psnr # 초기 PSNR 저장
+
+        print(
+            f"\033[92mInitial PSNR: {initial_psnr:.6f}\033[0m"
+            f"\nInitial MSE: {mse:.6f}\033[0m"
+        )
 
         # Pre-model output 계산
         pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소
@@ -259,7 +294,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         all_pixels = np.arange(num_channels * img_height * img_width)
         np.random.shuffle(all_pixels)  # 랜덤 순서로 픽셀 섞기
 
-        # 모든 픽셀에 대해 한 번씩 시도
         for attempt, pixel in enumerate(all_pixels):
             channel = pixel // (img_height * img_width)
             pixel_index = pixel % (img_height * img_width)
@@ -282,31 +316,34 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
 
             # 조건에 따라 연산 수행
             if channel < rchannel:
-                # Red 채널 범위일 때
+                # Red 채널 범위일 때, rmean만 갱신
                 red = current_state[:, :rchannel, :, :]
                 red = tt.Tensor(red, meta=rmeta)
                 rsim = tt.simulate(red, z).abs() ** 2
                 rmean = torch.mean(rsim, dim=1, keepdim=True)
 
-            elif channel < gchannel:
-                # Green 채널 범위일 때
+            elif rchannel <= channel < gchannel:
+                # Green 채널 범위일 때, gmean만 갱신
                 green = current_state[:, rchannel:gchannel, :, :]
                 green = tt.Tensor(green, meta=gmeta)
                 gsim = tt.simulate(green, z).abs() ** 2
                 gmean = torch.mean(gsim, dim=1, keepdim=True)
 
-            else:
-                # Blue 채널 범위일 때
+            elif gchannel <= channel:
+                # Blue 채널 범위일 때, bmean만 갱신
                 blue = current_state[:, gchannel:, :, :]
                 blue = tt.Tensor(blue, meta=bmeta)
                 bsim = tt.simulate(blue, z).abs() ** 2
                 bmean = torch.mean(bsim, dim=1, keepdim=True)
 
+            # rmean, gmean, bmean 값이 항상 유지되도록 확인
+            assert rmean is not None and gmean is not None and bmean is not None, "Mean values must not be None."
+
             # RGB 결합
             rgb = torch.cat([rmean, gmean, bmean], dim=1)
             rgb = tt.Tensor(rgb, meta=meta)
 
-            psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)
+            psnr_after = tt.relativeLoss(rgb, target_image, tm.get_PSNR)  # 초기 PSNR 저장
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
@@ -360,6 +397,37 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
+
+            if steps % 100 == 0:
+                psnr_change = psnr_after - previous_psnr
+                psnr_diff = psnr_after - initial_psnr
+                success_ratio = flip_count / steps
+                data_processing_time = time.time() - total_start_time
+                print(
+                    f"Step: {steps}"
+                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
+                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
+                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
+                )
+                total_improved_pixels = sum(improved_bin_counts.values())
+                for i in range(len(output_bins) - 1):
+                    total_count = bin_counts[i]
+                    improved_count = improved_bin_counts[i]
+                    improved_ratio = improved_count / total_count if total_count > 0 else 0
+                    range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
+                    total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
+                    avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
+
+                    print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
+                          f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
+                          f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
+                          f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
+                          f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
+                          f"Average PSNR Improvement = {avg_psnr_improvement:.8f}")
+
+                print("\n")
+
 
         # 성공 비율 계산
         success_ratio = flip_count / steps if steps > 0 else 0
