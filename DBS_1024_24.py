@@ -259,16 +259,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         rgb = torch.cat([rmean, gmean, bmean], dim=1)
         rgb = tt.Tensor(rgb, meta=meta)
 
-        # MSE 및 PSNR 계산
-        mse = tt.relativeLoss(rgb, target_image_cuda, F.mse_loss).detach().cpu().numpy()
-        initial_psnr = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
-        previous_psnr = initial_psnr # 초기 PSNR 저장
-
-        print(
-            f"\033[92mInitial PSNR: {initial_psnr:.6f}\033[0m"
-            f"\nInitial MSE: {mse:.6f}\033[0m"
-        )
-
         # Pre-model output 계산
         pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소
 
