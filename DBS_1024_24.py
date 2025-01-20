@@ -333,11 +333,12 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             rgb = torch.cat([rmean, gmean, bmean], dim=1)
             rgb = tt.Tensor(rgb, meta=meta)
 
-            psnr_after = tt.relativeLoss(rgb, target_image, tm.get_PSNR)  # 초기 PSNR 저장
+            psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
                 flip_count += 1
+
                 # 현재 PSNR 값이 출력 기준을 충족했는지 확인
                 while next_print_thresholds and psnr_after >= next_print_thresholds[0]:
                     threshold = next_print_thresholds.pop(0)
@@ -387,37 +388,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
-
-            if steps % 100 == 0:
-                psnr_change = psnr_after - previous_psnr
-                psnr_diff = psnr_after - initial_psnr
-                success_ratio = flip_count / steps
-                data_processing_time = time.time() - total_start_time
-                print(
-                    f"Step: {steps}"
-                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
-                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
-                )
-                total_improved_pixels = sum(improved_bin_counts.values())
-                for i in range(len(output_bins) - 1):
-                    total_count = bin_counts[i]
-                    improved_count = improved_bin_counts[i]
-                    improved_ratio = improved_count / total_count if total_count > 0 else 0
-                    range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
-                    total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
-                    avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
-
-                    print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
-                          f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
-                          f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
-                          f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
-                          f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
-                          f"Average PSNR Improvement = {avg_psnr_improvement:.8f}")
-
-                print("\n")
-
 
         # 성공 비율 계산
         success_ratio = flip_count / steps if steps > 0 else 0
