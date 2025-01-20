@@ -134,12 +134,12 @@ class BinaryHologramEnv(gym.Env):
         gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
         bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
 
-        channel = self.state.shape[1]
+        rgbchannel = self.state.shape[1]
 
-        rchannel = int(channel / 3)
-        gchannel = int(channel * 2 / 3)
+        rchannel = int(rgbchannel / 3)
+        gchannel = int(rgbchannel * 2 / 3)
 
-        print(f"channel: {channel}, rchannel: {rchannel}, gchannel: {gchannel}")
+        print(f"channel: {rgbchannel}, rchannel: {rchannel}, gchannel: {gchannel}")
 
         red = self.state[:, :rchannel, :, :]
         green = self.state[:, rchannel:gchannel, :, :]
