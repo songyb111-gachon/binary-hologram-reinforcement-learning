@@ -45,66 +45,6 @@ IPS = 1024  #이미지 픽셀 사이즈
 CH = 24  #채널
 RW = 800  #보상
 
-class SignFunction(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, th):
-        ctx.save_for_backward(input)
-        t = torch.Tensor([th]).to(input.device)  # threshold
-        output = (input > t).float() * 1
-        return output
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
-        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
-        return grad_input
-
-class RealSign(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input):
-        output = torch.sign(input)
-        return output
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
-        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
-        return grad_input
-
-def binary_sim(out, z=2e-3):
-    binary = SignFunction.apply(out)
-    sim = tt.simulate(binary, z).abs()**2
-    res = torch.mean(sim, dim=1, keepdim=True)
-    return binary, res
-
-def rgb_binary_sim(out, z, th):
-    pixel_pitch = 7.56e-6
-    meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(pixel_pitch, pixel_pitch)}
-    rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
-    gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
-    bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
-    sign = SignFunction.apply
-    binary = sign(out, th)
-    channel = out.shape[1]
-    rchannel = int(channel/3)
-    gchannel = int(channel*2/3)
-    red = binary[:, :rchannel, :, :]
-    green = binary[:, rchannel:gchannel, :, :]
-    blue = binary[:, gchannel:, :, :]
-    red = tt.Tensor(red, meta=rmeta)
-    green = tt.Tensor(green, meta=gmeta)
-    blue = tt.Tensor(blue, meta=bmeta)
-    rsim = tt.simulate(red, z).abs()**2
-    gsim = tt.simulate(green, z).abs()**2
-    bsim = tt.simulate(blue, z).abs()**2
-    rmean = torch.mean(rsim, dim=1, keepdim=True)
-    gmean = torch.mean(gsim, dim=1, keepdim=True)
-    bmean = torch.mean(bsim, dim=1, keepdim=True)
-    rgb = torch.cat([rmean, gmean, bmean], dim=1)
-    rgb = tt.Tensor(rgb, meta=meta)
-    binary = tt.Tensor(binary, meta=meta)
-    return binary, rgb
-
 class BinaryNet(nn.Module):
     def __init__(self, num_hologram, final='Sigmoid', in_planes=3,
                  channels=[32, 64, 128, 256, 512, 1024, 2048, 4096],
@@ -263,7 +203,7 @@ class Dataset512(Dataset):
 import numpy as np
 from collections import defaultdict
 
-def optimize_with_random_pixel_flips(env, z=2e-3):
+def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
     db_num = 800
     max_datasets = 800  # 최대 데이터셋 처리 개수
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
@@ -282,8 +222,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
         total_start_time = time.time()
 
         current_state = obs["state"]
-        state_ratio = np.zeros_like(current_state)  # 픽셀별 플립 시도 기록
         target_image = obs["target_image"]
+        target_image_cuda = torch.tensor(target_image, dtype=torch.float32).cuda()
         initial_psnr = env.initial_psnr  # 초기 PSNR
         previous_psnr = initial_psnr
         steps = 0
@@ -306,7 +246,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             ).sum()
 
         # 다음 출력 기준 PSNR 값 리스트 설정
-        next_print_thresholds = [initial_psnr + i * 0.5 for i in range(1, 21)]  # 최대 10.0 상승까지 출력
+        next_print_thresholds = [initial_psnr + i * 0.01 for i in range(1, 101)]  # 최대 10.0 상승까지 출력
 
         print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
 
@@ -326,17 +266,51 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
             current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
             steps += 1
 
-            binary = torch.tensor(current_state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
+            meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
+            rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
+            gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
+            bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
 
-            binary, rgb = rgb_binary_sim(binary, z, 0.5)
+            channel = current_state.shape[1]
 
-            # Ensure `result_after` and `target_image` are Tensors
-            if not isinstance(rgb, torch.Tensor):
-                rgb = torch.tensor(rgb, dtype=torch.float32).cuda()
-            if not isinstance(target_image, torch.Tensor):
-                target_image = torch.tensor(target_image, dtype=torch.float32).cuda()
+            rchannel = int(channel / 3)
+            gchannel = int(channel * 2 / 3)
 
-            psnr_after = tt.relativeLoss(rgb, target_image, tm.get_PSNR)
+            print(f"channel: {channel}, rchannel: {rchannel}, gchannel: {gchannel}")
+
+            # 조건에 따라 연산 수행
+            if channel < rchannel:
+                # Red 채널 범위일 때
+                red = current_state[:, :rchannel, :, :]
+                red = tt.Tensor(red, meta=rmeta)
+                rsim = tt.simulate(red, z).abs() ** 2
+                rmean = torch.mean(rsim, dim=1, keepdim=True)
+                gmean = torch.zeros_like(rmean)
+                bmean = torch.zeros_like(rmean)
+
+            elif channel < gchannel:
+                # Green 채널 범위일 때
+                green = current_state[:, rchannel:gchannel, :, :]
+                green = tt.Tensor(green, meta=gmeta)
+                gsim = tt.simulate(green, z).abs() ** 2
+                gmean = torch.mean(gsim, dim=1, keepdim=True)
+                rmean = torch.zeros_like(gmean)
+                bmean = torch.zeros_like(gmean)
+
+            else:
+                # Blue 채널 범위일 때
+                blue = current_state[:, gchannel:, :, :]
+                blue = tt.Tensor(blue, meta=bmeta)
+                bsim = tt.simulate(blue, z).abs() ** 2
+                bmean = torch.mean(bsim, dim=1, keepdim=True)
+                rmean = torch.zeros_like(bmean)
+                gmean = torch.zeros_like(bmean)
+
+            # RGB 결합
+            rgb = torch.cat([rmean, gmean, bmean], dim=1)
+            rgb = tt.Tensor(rgb, meta=meta)
+
+            psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
@@ -355,6 +329,23 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                         f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                         f"\nTime taken for this data: {data_processing_time:.2f} seconds"
                     )
+                    total_improved_pixels = sum(improved_bin_counts.values())
+                    for i in range(len(output_bins) - 1):
+                        total_count = bin_counts[i]
+                        improved_count = improved_bin_counts[i]
+                        improved_ratio = improved_count / total_count if total_count > 0 else 0
+                        range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
+                        total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
+                        avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
+
+                        print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
+                              f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
+                              f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
+                              f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
+                              f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
+                              f"Average PSNR Improvement = {avg_psnr_improvement:.8f}")
+
+                    print("\n")
 
                 # 플립 성공 픽셀의 pre-model output 값 확인
                 pre_value = pre_model_output[channel, row, col]
@@ -437,7 +428,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
                   f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
                   f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
                   f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
-                  f"Average PSNR Improvement = {avg_psnr_improvement:.6f}")
+                  f"Average PSNR Improvement = {avg_psnr_improvement:.8f}")
 
         print("\n")
 

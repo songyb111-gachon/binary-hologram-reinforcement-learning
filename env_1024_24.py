@@ -35,66 +35,6 @@ warnings.filterwarnings('ignore')
 # 현재 날짜와 시간을 가져와 포맷 지정
 current_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-class SignFunction(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, th):
-        ctx.save_for_backward(input)
-        t = torch.Tensor([th]).to(input.device)  # threshold
-        output = (input > t).float() * 1
-        return output
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
-        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
-        return grad_input
-
-class RealSign(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input):
-        output = torch.sign(input)
-        return output
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
-        grad_input = grad_output * torch.ones_like(input)  # Replace with your custom gradient computation
-        return grad_input
-
-def binary_sim(out, z=2e-3):
-    binary = SignFunction.apply(out)
-    sim = tt.simulate(binary, z).abs()**2
-    res = torch.mean(sim, dim=1, keepdim=True)
-    return binary, res
-
-def rgb_binary_sim(out, z, th):
-    pixel_pitch = 7.56e-6
-    meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(pixel_pitch, pixel_pitch)}
-    rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
-    gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
-    bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
-    sign = SignFunction.apply
-    binary = sign(out, th)
-    channel = out.shape[1]
-    rchannel = int(channel/3)
-    gchannel = int(channel*2/3)
-    red = binary[:, :rchannel, :, :]
-    green = binary[:, rchannel:gchannel, :, :]
-    blue = binary[:, gchannel:, :, :]
-    red = tt.Tensor(red, meta=rmeta)
-    green = tt.Tensor(green, meta=gmeta)
-    blue = tt.Tensor(blue, meta=bmeta)
-    rsim = tt.simulate(red, z).abs()**2
-    gsim = tt.simulate(green, z).abs()**2
-    bsim = tt.simulate(blue, z).abs()**2
-    rmean = torch.mean(rsim, dim=1, keepdim=True)
-    gmean = torch.mean(gsim, dim=1, keepdim=True)
-    bmean = torch.mean(bsim, dim=1, keepdim=True)
-    rgb = torch.cat([rmean, gmean, bmean], dim=1)
-    rgb = tt.Tensor(rgb, meta=meta)
-    binary = tt.Tensor(binary, meta=meta)
-    return binary, rgb
-
 # BinaryHologramEnv 클래스
 class BinaryHologramEnv(gym.Env):
     def __init__(self, target_function, trainloader, max_steps=10000, T_PSNR=30, T_steps=1, T_PSNR_DIFF=0.1):
@@ -149,7 +89,7 @@ class BinaryHologramEnv(gym.Env):
         # 에피소드 카운트
         self.episode_num_count = 0
 
-    def reset(self, seed=None, options=None, z=2e-3):
+    def reset(self, seed=None, options=None, z=2e-3, pixel_pitch=7.56e-6):
         # CUDA 캐시 메모리 정리
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
@@ -189,9 +129,36 @@ class BinaryHologramEnv(gym.Env):
         self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
         self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
-        binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
+        meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
 
-        binary, rgb = rgb_binary_sim(binary, z, 0.5)
+        channel = self.state.shape[1]
+
+        rchannel = int(channel / 3)
+        gchannel = int(channel * 2 / 3)
+
+        print(f"channel: {channel}, rchannel: {rchannel}, gchannel: {gchannel}")
+
+        red = self.state[:, :rchannel, :, :]
+        green = self.state[:, rchannel:gchannel, :, :]
+        blue = self.state[:, gchannel:, :, :]
+
+        red = tt.Tensor(red, meta=rmeta)
+        green = tt.Tensor(green, meta=gmeta)
+        blue = tt.Tensor(blue, meta=bmeta)
+
+        rsim = tt.simulate(red, z).abs() ** 2
+        gsim = tt.simulate(green, z).abs() ** 2
+        bsim = tt.simulate(blue, z).abs() ** 2
+
+        rmean = torch.mean(rsim, dim=1, keepdim=True)
+        gmean = torch.mean(gsim, dim=1, keepdim=True)
+        bmean = torch.mean(bsim, dim=1, keepdim=True)
+
+        rgb = torch.cat([rmean, gmean, bmean], dim=1)
+        rgb = tt.Tensor(rgb, meta=meta)
 
         # MSE 및 PSNR 계산
         mse = tt.relativeLoss(rgb, self.target_image, F.mse_loss).detach().cpu().numpy()
@@ -204,39 +171,13 @@ class BinaryHologramEnv(gym.Env):
                "recon_image": rgb.cpu().numpy(),
                "target_image": self.target_image_np,
                }
+        crop = torchvision.transforms.CenterCrop(1024-128)
 
-        # Reconstructed RGB 이미지를 matplotlib에 맞게 정규화
-        rgb_np = rgb.cpu().numpy().squeeze().transpose(1, 2, 0)  # (H, W, C)로 변환
-        rgb_np = np.clip(rgb_np, 0, 1)  # 값이 [0, 1] 범위 내에 있도록 제한
+        sim = rgb
 
-        # Target RGB 이미지를 정규화
-        target_np = self.target_image_np.squeeze().transpose(1, 2, 0)  # (H, W, C)로 변환
-        if target_np.max() > 1.0:  # 만약 target 이미지 값이 [0, 255] 범위라면
-            target_np = np.clip(target_np / 255.0, 0, 1)  # [0, 1]로 정규화
+        target = self.target_image
 
-        # 이미지 출력 및 저장
-        plt.figure(figsize=(12, 6))
-
-        # Reconstructed RGB 이미지 출력
-        plt.subplot(1, 2, 1)
-        plt.imshow(rgb_np)  # Reconstructed RGB 이미지 출력
-        plt.title("Reconstructed RGB Image")
-        plt.axis("off")
-
-        # Target RGB 이미지 출력
-        plt.subplot(1, 2, 2)
-        plt.imshow(target_np)  # Target RGB 이미지 출력
-        plt.title("Target RGB Image")
-        plt.axis("off")
-
-        # 화면에 출력
-        plt.show()
-
-        # 이미지 저장
-        save_path = f"output_images/episode_{self.episode_num_count}_comparison.png"
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)  # 저장 디렉토리 생성
-        plt.savefig(save_path, bbox_inches='tight')
-        print(f"이미지가 저장되었습니다: {save_path}")
+        tt.show_with_insets(crop(sim), crop(target), correct_colorwise=True)
 
         print(
             f"\033[92mInitial PSNR: {self.initial_psnr:.6f}\033[0m"
