@@ -302,12 +302,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 bsim = tt.simulate(blue, z).abs() ** 2
                 bmean = torch.mean(bsim, dim=1, keepdim=True)
 
-            rmean_np = rmean.cpu().numpy()
-            gmean_np = gmean.cpu().numpy()
-            bmean_np = bmean.cpu().numpy()
-
-            print(f"{rmean_np}, {gmean_np}, {bmean_np}")
-
             # RGB 결합
             rgb = torch.cat([rmean, gmean, bmean], dim=1)
             rgb = tt.Tensor(rgb, meta=meta)
