@@ -158,7 +158,7 @@ class BinaryHologramEnv(gym.Env):
         self.gmean = torch.mean(gsim, dim=1, keepdim=True)
         self.bmean = torch.mean(bsim, dim=1, keepdim=True)
 
-        rgb = torch.cat([rmean, gmean, bmean], dim=1)
+        rgb = torch.cat([self.rmean, self.gmean, self.bmean], dim=1)
         rgb = tt.Tensor(rgb, meta=meta)
 
         # MSE 및 PSNR 계산
