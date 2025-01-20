@@ -139,8 +139,6 @@ class BinaryHologramEnv(gym.Env):
         rchannel = int(rgbchannel / 3)
         gchannel = int(rgbchannel * 2 / 3)
 
-        print(f"channel: {rgbchannel}, rchannel: {rchannel}, gchannel: {gchannel}")
-
         red = self.state[:, :rchannel, :, :]
         green = self.state[:, rchannel:gchannel, :, :]
         blue = self.state[:, gchannel:, :, :]
@@ -189,9 +187,9 @@ class BinaryHologramEnv(gym.Env):
 
         self.total_start_time = time.time()
 
-        return obs, {"state": self.state}
+        return obs, {"state": self.state}, rmean, gmean, bmean
 
-    def step(self, action, z=2e-3):
+    def step(self, action, z=2e-3, pixel_pitch=7.56e-6):
         self.steps += 1
 
         # 행동을 기반으로 픽셀 좌표 계산
@@ -206,9 +204,42 @@ class BinaryHologramEnv(gym.Env):
 
         self.flip_count += 1  # 플립 증가
 
-        binary = torch.tensor(self.state, dtype=torch.float32).cuda()  # (1, CH, IPS, IPS)
+        meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
+        bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
 
-        binary, rgb = rgb_binary_sim(binary, z, 0.5)
+        rgbchannel = self.state.shape[1]
+
+        rchannel = int(rgbchannel / 3)
+        gchannel = int(rgbchannel * 2 / 3)
+
+        # 조건에 따라 연산 수행
+        if channel < rchannel:
+            # Red 채널 범위일 때
+            red = self.state[:, :rchannel, :, :]
+            red = tt.Tensor(red, meta=rmeta)
+            rsim = tt.simulate(red, z).abs() ** 2
+            rmean = torch.mean(rsim, dim=1, keepdim=True)
+
+        elif channel < gchannel:
+            # Green 채널 범위일 때
+            green = self.state[:, rchannel:gchannel, :, :]
+            green = tt.Tensor(green, meta=gmeta)
+            gsim = tt.simulate(green, z).abs() ** 2
+            gmean = torch.mean(gsim, dim=1, keepdim=True)
+
+        else:
+            # Blue 채널 범위일 때
+            blue = self.state[:, gchannel:, :, :]
+            blue = tt.Tensor(blue, meta=bmeta)
+            bsim = tt.simulate(blue, z).abs() ** 2
+            bmean = torch.mean(bsim, dim=1, keepdim=True)
+            rmean = torch.zeros_like(bmean)
+
+        # RGB 결합
+        rgb = torch.cat([rmean, gmean, bmean], dim=1)
+        rgb = tt.Tensor(rgb, meta=meta)
 
         psnr_after = tt.relativeLoss(rgb, self.target_image, tm.get_PSNR)
 

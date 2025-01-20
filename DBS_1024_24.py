@@ -230,6 +230,10 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         flip_count = 0
         psnr_after = 0
 
+        rmean = rmean
+        bmean = bmean
+        gmean = gmean
+
         # Pre-model output 계산
         pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소
 
@@ -276,8 +280,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             rchannel = int(rgbchannel / 3)
             gchannel = int(rgbchannel * 2 / 3)
 
-            print(f"channel: {channel}, rchannel: {rchannel}, gchannel: {gchannel}")
-
             # 조건에 따라 연산 수행
             if channel < rchannel:
                 # Red 채널 범위일 때
@@ -285,8 +287,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 red = tt.Tensor(red, meta=rmeta)
                 rsim = tt.simulate(red, z).abs() ** 2
                 rmean = torch.mean(rsim, dim=1, keepdim=True)
-                gmean = torch.zeros_like(rmean)
-                bmean = torch.zeros_like(rmean)
 
             elif channel < gchannel:
                 # Green 채널 범위일 때
@@ -294,8 +294,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 green = tt.Tensor(green, meta=gmeta)
                 gsim = tt.simulate(green, z).abs() ** 2
                 gmean = torch.mean(gsim, dim=1, keepdim=True)
-                rmean = torch.zeros_like(gmean)
-                bmean = torch.zeros_like(gmean)
 
             else:
                 # Blue 채널 범위일 때
@@ -303,8 +301,12 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 blue = tt.Tensor(blue, meta=bmeta)
                 bsim = tt.simulate(blue, z).abs() ** 2
                 bmean = torch.mean(bsim, dim=1, keepdim=True)
-                rmean = torch.zeros_like(bmean)
-                gmean = torch.zeros_like(bmean)
+
+            rmean_np = rmean.cpu().numpy()
+            gmean_np = gmean.cpu().numpy()
+            bmean_np = bmean.cpu().numpy()
+
+            print(f"{rmean_np}, {gmean_np}, {bmean_np}")
 
             # RGB 결합
             rgb = torch.cat([rmean, gmean, bmean], dim=1)
