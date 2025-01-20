@@ -311,6 +311,11 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 red = tt.Tensor(red, meta=rmeta)
                 rsim = tt.simulate(red, z).abs() ** 2
                 rmean = torch.mean(rsim, dim=1, keepdim=True)
+                rgb = torch.cat([rmean, gmean, bmean], dim=1)
+                rgb = tt.Tensor(rgb, meta=meta)
+                psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+                psnr_change = psnr_after - previous_psnr
+                print(f"r_change: {psnr_change:.8f}, steps: {steps}, Flip Pixel: Channel={channel}, Row={row}, Col={col}")
 
             elif rchannel <= channel < gchannel:
                 # Green 채널 범위일 때, gmean만 갱신
@@ -318,6 +323,11 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 green = tt.Tensor(green, meta=gmeta)
                 gsim = tt.simulate(green, z).abs() ** 2
                 gmean = torch.mean(gsim, dim=1, keepdim=True)
+                rgb = torch.cat([rmean, gmean, bmean], dim=1)
+                rgb = tt.Tensor(rgb, meta=meta)
+                psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+                psnr_change = psnr_after - previous_psnr
+                print(f"g_change: {psnr_change:.8f}, steps: {steps}, Flip Pixel: Channel={channel}, Row={row}, Col={col}")
 
             elif gchannel <= channel:
                 # Blue 채널 범위일 때, bmean만 갱신
@@ -325,15 +335,36 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 blue = tt.Tensor(blue, meta=bmeta)
                 bsim = tt.simulate(blue, z).abs() ** 2
                 bmean = torch.mean(bsim, dim=1, keepdim=True)
+                rgb = torch.cat([rmean, gmean, bmean], dim=1)
+                rgb = tt.Tensor(rgb, meta=meta)
+                psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+                psnr_change = psnr_after - previous_psnr
+                print(f"b_change: {psnr_change:.8f}, steps: {steps}, Flip Pixel: Channel={channel}, Row={row}, Col={col}")
 
-            # rmean, gmean, bmean 값이 항상 유지되도록 확인
-            assert rmean is not None and gmean is not None and bmean is not None, "Mean values must not be None."
+            red = current_state[:, :rchannel, :, :]
+            green = current_state[:, rchannel:gchannel, :, :]
+            blue = current_state[:, gchannel:, :, :]
+
+            red = tt.Tensor(red, meta=rmeta)
+            green = tt.Tensor(green, meta=gmeta)
+            blue = tt.Tensor(blue, meta=bmeta)
+
+            rsim = tt.simulate(red, z).abs() ** 2
+            gsim = tt.simulate(green, z).abs() ** 2
+            bsim = tt.simulate(blue, z).abs() ** 2
+
+            rmean = torch.mean(rsim, dim=1, keepdim=True)
+            gmean = torch.mean(gsim, dim=1, keepdim=True)
+            bmean = torch.mean(bsim, dim=1, keepdim=True)
 
             # RGB 결합
             rgb = torch.cat([rmean, gmean, bmean], dim=1)
             rgb = tt.Tensor(rgb, meta=meta)
 
             psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+
+            psnr_change = psnr_after - previous_psnr
+            print(f"rgb_change: {psnr_change:.8f}, steps: {steps}, Flip Pixel: Channel={channel}, Row={row}, Col={col}")
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
