@@ -276,10 +276,10 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             rchannel = int(rgbchannel / 3)
             gchannel = int(rgbchannel * 2 / 3)
 
-            print(f"channel: {rgbchannel}, rchannel: {rchannel}, gchannel: {gchannel}")
+            print(f"channel: {channel}, rchannel: {rchannel}, gchannel: {gchannel}")
 
             # 조건에 따라 연산 수행
-            if rgbchannel < rchannel:
+            if channel < rchannel:
                 # Red 채널 범위일 때
                 red = current_state[:, :rchannel, :, :]
                 red = tt.Tensor(red, meta=rmeta)
@@ -288,7 +288,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 gmean = torch.zeros_like(rmean)
                 bmean = torch.zeros_like(rmean)
 
-            elif rgbchannel < gchannel:
+            elif channel < gchannel:
                 # Green 채널 범위일 때
                 green = current_state[:, rchannel:gchannel, :, :]
                 green = tt.Tensor(green, meta=gmeta)
