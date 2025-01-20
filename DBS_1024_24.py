@@ -364,7 +364,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
 
             psnr_change = psnr_after - previous_psnr
-            print(f"rgb_change: {psnr_change:.8f}, steps: {steps}, Flip Pixel: Channel={channel}, Row={row}, Col={col}/n")
+            print(f"rgb_change: {psnr_change:.8f}, steps: {steps}, Flip Pixel: Channel={channel}, Row={row}, Col={col}\n")
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
