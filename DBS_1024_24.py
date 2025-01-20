@@ -294,18 +294,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
             steps += 1
 
-            meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
-            rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
-            gmeta = {'wl': (515e-9), 'dx': (pixel_pitch, pixel_pitch)}
-            bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
-
-            rgbchannel = current_state.shape[1]
-
-            rchannel = int(rgbchannel / 3)
-            gchannel = int(rgbchannel * 2 / 3)
-
             # 조건에 따라 연산 수행
-            if channel < rchannel:
+            if channel < 8:
                 # Red 채널 범위일 때, rmean만 갱신
                 red_after = current_state[:, :rchannel, :, :]
                 red_after = tt.Tensor(red_after, meta=rmeta)
@@ -315,7 +305,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 rgb = tt.Tensor(rgb, meta=meta)
                 psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
 
-            elif rchannel <= channel < gchannel:
+            elif 8 <= channel < 16:
                 # Green 채널 범위일 때, gmean만 갱신
                 green_after = current_state[:, rchannel:gchannel, :, :]
                 green_after = tt.Tensor(green_after, meta=gmeta)
@@ -325,7 +315,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                 rgb = tt.Tensor(rgb, meta=meta)
                 psnr_after = tt.relativeLoss(rgb, target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
 
-            elif gchannel <= channel:
+            elif 16 <= channel:
                 # Blue 채널 범위일 때, bmean만 갱신
                 blue_after = current_state[:, gchannel:, :, :]
                 blue_after = tt.Tensor(blue_after, meta=bmeta)
@@ -339,11 +329,11 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             if psnr_after > previous_psnr:
                 flip_count += 1
 
-                if channel < rchannel:
+                if channel < 8:
                     rmean = rmean_after
-                elif rchannel <= channel < gchannel:
+                elif 8 <= channel < 16:
                     gmean = gmean_after
-                elif gchannel <= channel:
+                elif 16 <= channel:
                     bmean = bmean_after
 
                 # 현재 PSNR 값이 출력 기준을 충족했는지 확인
@@ -361,6 +351,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
                         f"\nTime taken for this data: {data_processing_time:.2f} seconds"
                     )
                     total_improved_pixels = sum(improved_bin_counts.values())
+
                     for i in range(len(output_bins) - 1):
                         total_count = bin_counts[i]
                         improved_count = improved_bin_counts[i]
@@ -466,7 +457,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
 batch_size = 1
 #target_dir = 'dataset1/'
 target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
-valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
+valid_dir = 'valid/'
+#valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
 meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(7.56e-6, 7.56e-6)}
 padding = 0
 
