@@ -246,7 +246,17 @@ def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=0.5):
         # 다음 출력 기준 PSNR 값 리스트 설정
         next_print_thresholds = [initial_psnr + i * 0.05 for i in range(1, 21)]  # 최대 10.0 상승까지 출력
 
-        print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
+        a, imgname = next(iter(env.trainloader))
+
+        # imgname에서 파일 이름 추출
+        if isinstance(imgname, list) or isinstance(imgname, tuple):
+            imgname = imgname[0]  # imgname이 리스트나 튜플인 경우 첫 번째 요소 선택
+
+        # 파일 이름만 추출
+        file_name = os.path.basename(imgname)  # 경로에서 파일 이름 추출
+        file_name = os.path.splitext(file_name)[0]  # 확장자 제거 (ex: "0814")
+
+        print(f"Starting pixel flip optimization for file {file_name}.png with initial PSNR: {initial_psnr:.6f}")
 
         # 픽셀 크기 정보 가져오기
         num_channels, img_height, img_width = current_state.shape[1:]
@@ -363,7 +373,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=0.5):
             f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             f"\nTime taken for this data: {data_processing_time:.2f} seconds"
         )
-        print(f"{db_num}.png Optimization completed. Final PSNR improvement: {psnr_diff:.6f}")
+        print(f"{file_name}.png Optimization completed. Final PSNR improvement: {psnr_diff:.6f}")
         print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
         print("Pre-model output range statistics:")
 

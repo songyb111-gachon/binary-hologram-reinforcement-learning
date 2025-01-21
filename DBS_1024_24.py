@@ -268,7 +268,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
         dbs_folder = "DBS"
         os.makedirs(dbs_folder, exist_ok=True)  # 폴더가 없으면 생성
 
-        a, imgname = next(iter(valid_loader))
+        a, imgname = next(iter(env.trainloader))
 
         # imgname에서 파일 이름 추출
         if isinstance(imgname, list) or isinstance(imgname, tuple):
@@ -294,7 +294,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             ).sum()
 
         # 다음 출력 기준 PSNR 값 리스트 설정
-        next_print_thresholds = [initial_psnr + i * 0.01 for i in range(1, 101)]  # 최대 10.0 상승까지 출력
+        next_print_thresholds = [initial_psnr + i * 0.1 for i in range(1, 101)]  # 최대 10.0 상승까지 출력
 
         print(f"Starting pixel flip optimization for file {file_name}.png with initial PSNR: {initial_psnr:.6f}")
 
@@ -419,7 +419,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
             f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
             f"\nTime taken for this data: {data_processing_time:.2f} seconds"
         )
-        print(f"{db_num}.png Optimization completed. Final PSNR improvement: {psnr_diff:.6f}")
+        print(f"{file_name}.png Optimization completed. Final PSNR improvement: {psnr_diff:.6f}")
         print(f"Time taken for this data: {data_processing_time:.2f} seconds\n")
         print("Pre-model output range statistics:")
 
@@ -429,7 +429,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
 
         # Reconstructed RGB 이미지를 numpy 배열로 변환 및 저장
         rgb_np = rgb.cpu().numpy()  # RGB 데이터를 NumPy 배열로 변환
-        save_path_rgb = os.path.join(dbs_folder, f"episode_{db_num}_rgb_after.npy")  # 저장 경로 설정
+        save_path_rgb = os.path.join(dbs_folder, f"episode_{file_name}_rgb_after.npy")  # 저장 경로 설정
 
         # NumPy 배열로 저장
         np.save(save_path_rgb, rgb_np)
