@@ -205,7 +205,7 @@ from collections import defaultdict
 
 def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6):
     db_num = 0
-    max_datasets = 8  # 최대 데이터셋 처리 개수
+    max_datasets = 10  # 최대 데이터셋 처리 개수
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
 
     while db_num <= max_datasets:

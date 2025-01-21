@@ -37,7 +37,7 @@ def parse_text_and_plot(text):
     x = np.arange(len(ranges))
     bar_width = 0.35
 
-    # Plot 1: Improved vs Total Pixels
+    # Plot 1: Improved vs Total Pixels (Combined)
     plt.figure(figsize=(14, 7))
     plt.bar(x - bar_width / 2, improved_pixels, bar_width, label="Improved Pixels")
     plt.bar(x + bar_width / 2, total_pixels, bar_width, label="Total Pixels")
@@ -50,14 +50,62 @@ def parse_text_and_plot(text):
     plt.tight_layout()
     plt.show()
 
-    # Plot 2: Improvement Ratios
+    # Plot 1a: Improved Pixels (Individual)
+    plt.figure(figsize=(14, 7))
+    plt.bar(x, improved_pixels, bar_width, color='blue', label="Improved Pixels")
+    plt.xticks(x, ranges)
+    plt.xlabel("Range")
+    plt.ylabel("Improved Pixels")
+    plt.title("Improved Pixels Across Ranges")
+    plt.legend()
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
+    # Plot 1b: Total Pixels (Individual)
+    plt.figure(figsize=(14, 7))
+    plt.bar(x, total_pixels, bar_width, color='orange', label="Total Pixels")
+    plt.xticks(x, ranges)
+    plt.xlabel("Range")
+    plt.ylabel("Total Pixels")
+    plt.title("Total Pixels Across Ranges")
+    plt.legend()
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
+    # Plot 2: Combined Improvement Ratios
     plt.figure(figsize=(14, 7))
     plt.bar(x - bar_width / 2, improvement_ratio_in_range, bar_width, label="Improvement Ratio (in range)")
     plt.bar(x + bar_width / 2, improvement_ratio_total, bar_width, label="Improvement Ratio (to total improved)")
     plt.xticks(x, ranges)
     plt.xlabel("Range")
     plt.ylabel("Improvement Ratio")
-    plt.title("Improvement Ratios Across Ranges")
+    plt.title("Combined Improvement Ratios Across Ranges")
+    plt.legend()
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
+    # Plot 2a: Improvement Ratio (in range) - Individual
+    plt.figure(figsize=(14, 7))
+    plt.bar(x, improvement_ratio_in_range, bar_width, color='blue', label="Improvement Ratio (in range)")
+    plt.xticks(x, ranges)
+    plt.xlabel("Range")
+    plt.ylabel("Improvement Ratio (in range)")
+    plt.title("Improvement Ratio (in range) Across Ranges")
+    plt.legend()
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
+    # Plot 2b: Improvement Ratio (to total improved) - Individual
+    plt.figure(figsize=(14, 7))
+    plt.bar(x, improvement_ratio_total, bar_width, color='orange', label="Improvement Ratio (to total improved)")
+    plt.xticks(x, ranges)
+    plt.xlabel("Range")
+    plt.ylabel("Improvement Ratio (to total improved)")
+    plt.title("Improvement Ratio (to total improved) Across Ranges")
     plt.legend()
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
@@ -65,7 +113,7 @@ def parse_text_and_plot(text):
 
     # Plot 3: Total PSNR Improvement
     plt.figure(figsize=(14, 7))
-    plt.bar(x, total_psnr_improvement, bar_width, color='orange', label="Total PSNR Improvement")
+    plt.bar(x, total_psnr_improvement, bar_width, color='green', label="Total PSNR Improvement")
     plt.xticks(x, ranges)
     plt.xlabel("Range")
     plt.ylabel("Total PSNR Improvement (dB)")
@@ -77,7 +125,7 @@ def parse_text_and_plot(text):
 
     # Plot 4: Average PSNR Improvement
     plt.figure(figsize=(14, 7))
-    plt.bar(x, average_psnr_improvement, bar_width, color='green', label="Average PSNR Improvement")
+    plt.bar(x, average_psnr_improvement, bar_width, color='purple', label="Average PSNR Improvement")
     plt.xticks(x, ranges)
     plt.xlabel("Range")
     plt.ylabel("Average PSNR Improvement (dB)")
