@@ -310,27 +310,27 @@ def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=0.5):
                             psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
                         break
 
-                if steps %100 == 0:
-                    psnr_change = psnr_after - previous_psnr
-                    psnr_diff = psnr_after - initial_psnr
-                    success_ratio = flip_count / steps
-                    data_processing_time = time.time() - total_start_time
-                    print(
-                        f"Step: {steps}"
-                        f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                        f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
-                        f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                        f"\nTime taken for this data: {data_processing_time:.2f} seconds"
-                    )
-
-                previous_psnr = psnr_after
-
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
                 state_ratio[0, channel, row, col] -= 1  # 롤백 시도 기록
 
             psnr_diff = psnr_after - initial_psnr  # PSNR 상승량 계산
+
+            if steps % 100 == 0 and steps < 1100:
+                psnr_change = psnr_after - previous_psnr
+                psnr_diff = psnr_after - initial_psnr
+                success_ratio = flip_count / steps
+                data_processing_time = time.time() - total_start_time
+                print(
+                    f"Step: {steps}"
+                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
+                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
+                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
+                )
+
+            previous_psnr = psnr_after
 
             # PSNR 상승량 기준치 이상일 경우 다음 데이터셋으로 넘어가기
             if psnr_diff >= psnr_diff_threshold:
