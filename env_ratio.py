@@ -253,6 +253,25 @@ class BinaryHologramEnv(gym.Env):
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
 
+            total_improved_pixels = sum(self.improved_bin_counts.values())
+
+            for i in range(len(self.output_bins) - 1):
+                total_count = self.bin_counts[i]
+                improved_count = self.improved_bin_counts[i]
+                improved_ratio = improved_count / total_count if total_count > 0 else 0
+                range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
+                total_psnr_improvement = sum(self.psnr_improvements[i]) if improved_count > 0 else 0
+                avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
+
+                print(f"Range {self.output_bins[i]:.1f}-{self.output_bins[i + 1]:.1f}: "
+                      f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
+                      f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
+                      f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
+                      f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
+                      f"Average PSNR Improvement = {avg_psnr_improvement:.6f}")
+
+            print("\n")
+
             if self.psnr_sustained_steps >= self.T_steps and psnr_diff >= self.T_PSNR_DIFF:  # 성공 에피소드 조건
                 # Goal-Reaching Reward or Penalty 함수
                 # 1 = +300, 1/2 = +100, 1/4 = -100, 1/8 = -300
@@ -281,25 +300,6 @@ class BinaryHologramEnv(gym.Env):
                     + 2800 * success_ratio
                     - 595.24
                 )
-
-            total_improved_pixels = sum(self.improved_bin_counts.values())
-
-            for i in range(len(self.output_bins) - 1):
-                total_count = self.bin_counts[i]
-                improved_count = self.improved_bin_counts[i]
-                improved_ratio = improved_count / total_count if total_count > 0 else 0
-                range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
-                total_psnr_improvement = sum(self.psnr_improvements[i]) if improved_count > 0 else 0
-                avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
-
-                print(f"Range {self.output_bins[i]:.1f}-{self.output_bins[i + 1]:.1f}: "
-                      f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
-                      f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
-                      f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
-                      f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
-                      f"Average PSNR Improvement = {avg_psnr_improvement:.6f}")
-
-            print("\n")
 
         # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
         terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
