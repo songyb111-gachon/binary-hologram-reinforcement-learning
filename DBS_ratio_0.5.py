@@ -244,7 +244,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=0.5):
             ).sum()
 
         # 다음 출력 기준 PSNR 값 리스트 설정
-        next_print_thresholds = [initial_psnr + i * 0.5 for i in range(1, 21)]  # 최대 10.0 상승까지 출력
+        next_print_thresholds = [initial_psnr + i * 0.05 for i in range(1, 21)]  # 최대 10.0 상승까지 출력
 
         print(f"Starting pixel flip optimization for file {db_num}.png with initial PSNR: {initial_psnr:.6f}")
 
@@ -310,27 +310,40 @@ def optimize_with_random_pixel_flips(env, z=2e-3, psnr_diff_threshold=0.5):
                             psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
                         break
 
+                previous_psnr = psnr_after
+
+                if steps % 500 == 0 and steps <= 1000:
+                    psnr_change = psnr_after - previous_psnr
+                    psnr_diff = psnr_after - initial_psnr
+                    success_ratio = flip_count / steps
+                    data_processing_time = time.time() - total_start_time
+                    print(
+                        f"Step: {steps}"
+                        f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
+                        f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
+                        f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                        f"\nTime taken for this data: {data_processing_time:.2f} seconds"
+                    )
+
             else:
                 # PSNR이 개선되지 않았으면 플립 롤백
                 current_state[0, channel, row, col] = 1 - current_state[0, channel, row, col]
                 state_ratio[0, channel, row, col] -= 1  # 롤백 시도 기록
 
+                if steps % 500 == 0 and steps <= 1000:
+                    psnr_change = psnr_after - previous_psnr
+                    psnr_diff = psnr_after - initial_psnr
+                    success_ratio = flip_count / steps
+                    data_processing_time = time.time() - total_start_time
+                    print(
+                        f"Step: {steps}"
+                        f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
+                        f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
+                        f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                        f"\nTime taken for this data: {data_processing_time:.2f} seconds"
+                    )
+
             psnr_diff = psnr_after - initial_psnr  # PSNR 상승량 계산
-
-            if steps % 100 == 0 and steps < 1100:
-                psnr_change = psnr_after - previous_psnr
-                psnr_diff = psnr_after - initial_psnr
-                success_ratio = flip_count / steps
-                data_processing_time = time.time() - total_start_time
-                print(
-                    f"Step: {steps}"
-                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
-                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
-                )
-
-            previous_psnr = psnr_after
 
             # PSNR 상승량 기준치 이상일 경우 다음 데이터셋으로 넘어가기
             if psnr_diff >= psnr_diff_threshold:
