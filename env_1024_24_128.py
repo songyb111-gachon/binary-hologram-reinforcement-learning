@@ -148,7 +148,6 @@ class BinaryHologramEnv(gym.Env):
         bmeta = {'wl': (450e-9), 'dx': (pixel_pitch, pixel_pitch)}
 
         rgbchannel = self.cropped_state.shape[1]
-
         rchannel = int(rgbchannel / 3)
         gchannel = int(rgbchannel * 2 / 3)
 
