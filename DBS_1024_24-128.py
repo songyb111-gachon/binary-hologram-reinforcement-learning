@@ -218,8 +218,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         total_start_time = time.time()
 
+        target_image = next(iter(valid_loader))
+
         current_state = obs["state"]
-        target_image = obs["target_image_np"]
         target_image_cuda = torch.tensor(target_image, dtype=torch.float32).cuda()
 
         crop = torchvision.transforms.CenterCrop(1024 - 128)
