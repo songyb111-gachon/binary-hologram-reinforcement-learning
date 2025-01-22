@@ -206,7 +206,8 @@ from collections import defaultdict
 def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
     db_num = 0
     max_datasets = 10  # 최대 데이터셋 처리 개수
-    output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
+    output_bins = np.round(np.linspace(0, 1.0, 11), decimals=10)
+    print(output_bins) # pre-model output 값의 범위 설정
 
     while db_num <= max_datasets:
         try:
@@ -303,16 +304,20 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         # 각 범위 값의 픽셀 개수 계산
         for i in range(len(output_bins) - 1):
-            if i == len(output_bins) - 1:  # 마지막 범위
+            if i == len(output_bins) - 2:  # 마지막 범위
                 bin_counts[i] = np.logical_and(
                     cropped_pre_model_output >= output_bins[i],
                     cropped_pre_model_output <= output_bins[i + 1]
                 ).sum()
+                print("i")
+                print(output_bins[i])
             else:
                 bin_counts[i] = np.logical_and(
                     cropped_pre_model_output >= output_bins[i],
                     cropped_pre_model_output < output_bins[i + 1]
                 ).sum()
+                print("e")
+                print(output_bins[i])
 
         # 다음 출력 기준 PSNR 값 리스트 설정
         next_print_thresholds = [initial_psnr + i * 0.1 for i in range(1, 101)]  # 최대 10.0 상승까지 출력

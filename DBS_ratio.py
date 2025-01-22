@@ -204,10 +204,7 @@ from collections import defaultdict
 def optimize_with_random_pixel_flips(env, z=2e-3):
     db_num = 0
     max_datasets = 800  # 최대 데이터셋 처리 개수
-    output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
-    bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
-    improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
-    psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
+    output_bins = np.round(np.linspace(0, 1.0, 11), decimals=10)
 
     while db_num <= max_datasets:
         try:
@@ -238,7 +235,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
         # 각 범위 값의 픽셀 개수 계산
         for i in range(len(output_bins) - 1):
-            if i == len(output_bins) - 1:  # 마지막 범위
+            if i == len(output_bins) - 2:  # 마지막 범위
                 bin_counts[i] = np.logical_and(
                     pre_model_output >= output_bins[i],
                     pre_model_output <= output_bins[i + 1]
@@ -320,7 +317,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3):
 
                 # 범위에 따른 카운트 증가
                 for i in range(len(output_bins) - 1):
-                    if i == len(output_bins) - 1:  # 마지막 범위
+                    if i == len(output_bins) - 2:  # 마지막 범위
                         if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
                             bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                             if psnr_after > previous_psnr:
