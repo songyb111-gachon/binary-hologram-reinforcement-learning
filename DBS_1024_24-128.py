@@ -303,7 +303,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         # 각 범위 값의 픽셀 개수 계산
         for i in range(len(output_bins) - 1):
-            if i == len(output_bins) - 2:  # 마지막 범위
+            if i == len(output_bins) - 1:  # 마지막 범위
                 bin_counts[i] = np.logical_and(
                     cropped_pre_model_output >= output_bins[i],
                     cropped_pre_model_output <= output_bins[i + 1]
@@ -414,7 +414,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
                 # 범위에 따른 카운트 증가
                 for i in range(len(output_bins) - 1):
-                    if i == len(output_bins) - 2:  # 마지막 범위
+                    if i == len(output_bins) - 1:  # 마지막 범위
                         if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
                             bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                             if psnr_after > previous_psnr:
