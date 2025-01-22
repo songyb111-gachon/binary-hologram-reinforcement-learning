@@ -143,7 +143,7 @@ class BinaryHologramEnv(gym.Env):
         print(self.target_image_np.shape)
         self.cropped_state = self.state[:, :, :-crop_margin, :-crop_margin]
         print(self.cropped_state.shape)
-        self.cropped_target_image_np = self.target_image_np[:, :, -crop_margin, :-crop_margin]
+        self.cropped_target_image_np = self.target_image_np[:, :, :-crop_margin, :-crop_margin]
         print(self.cropped_target_image_np.shape)
         self.cropped_target_image_cuda = torch.tensor(self.cropped_target_image_np, dtype=torch.float32).cuda()
         print(self.cropped_target_image_cuda.shape)
