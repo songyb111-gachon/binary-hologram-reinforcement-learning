@@ -303,10 +303,16 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         # 각 범위 값의 픽셀 개수 계산
         for i in range(len(output_bins) - 1):
-            bin_counts[i] = np.logical_and(
-                cropped_pre_model_output >= output_bins[i],
-                cropped_pre_model_output < output_bins[i + 1]
-            ).sum()
+            if i == len(output_bins) - 2:  # 마지막 범위
+                bin_counts[i] = np.logical_and(
+                    cropped_pre_model_output >= output_bins[i],
+                    cropped_pre_model_output <= output_bins[i + 1]
+                ).sum()
+            else:
+                bin_counts[i] = np.logical_and(
+                    cropped_pre_model_output >= output_bins[i],
+                    cropped_pre_model_output < output_bins[i + 1]
+                ).sum()
 
         # 다음 출력 기준 PSNR 값 리스트 설정
         next_print_thresholds = [initial_psnr + i * 0.1 for i in range(1, 101)]  # 최대 10.0 상승까지 출력
@@ -404,16 +410,24 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                     print("\n")
 
                 # 플립 성공 픽셀의 pre-model output 값 확인
-                pre_value = pre_model_output[channel, row, col]
+                pre_value = cropped_pre_model_output[channel, row, col]
 
                 # 범위에 따른 카운트 증가
                 for i in range(len(output_bins) - 1):
-                    if output_bins[i] <= pre_value < output_bins[i + 1]:
-                        bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
-                        if psnr_after > previous_psnr:
-                            improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                            psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
-                        break
+                    if i == len(output_bins) - 2:  # 마지막 범위
+                        if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
+                            bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
+                            if psnr_after > previous_psnr:
+                                improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
+                                psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+                            break
+                    else:
+                        if output_bins[i] <= pre_value < output_bins[i + 1]:
+                            bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
+                            if psnr_after > previous_psnr:
+                                improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
+                                psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+                            break
 
                 previous_psnr = psnr_after
 
