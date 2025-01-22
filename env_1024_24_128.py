@@ -137,13 +137,15 @@ class BinaryHologramEnv(gym.Env):
         self.state = (self.observation >= 0.5).astype(np.int8)  # 초기 Binary state
         self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
+        crop = torchvision.transforms.CenterCrop(1024 - 128)
+
         # 64픽셀 크롭 적용
         print(self.state.shape)
         print(self.target_image.shape)
         print(self.target_image_np.shape)
-        self.cropped_state = self.state[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
+        self.cropped_state = crop(self.state)
         print(self.cropped_state.shape)
-        self.cropped_target_image_np = self.target_image_np[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
+        self.cropped_target_image_np = crop(self.target_image_np)
         print(self.cropped_target_image_np.shape)
         self.cropped_target_image_cuda = torch.tensor(self.cropped_target_image_np, dtype=torch.float32).cuda()
         print(self.cropped_target_image_cuda.shape)
