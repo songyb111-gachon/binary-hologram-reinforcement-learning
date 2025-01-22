@@ -146,6 +146,12 @@ class BinaryHologramEnv(gym.Env):
             f"\nInitial MSE: {mse:.6f}\033[0m"
         )
 
+        print(self.state_record.shape)
+        print(self.state.shape)
+        print(self.observation.shape)
+        print(result.cpu().numpy().shape)
+        print(self.target_image_np.shape)
+
         # 다음 출력 기준 PSNR 값 리스트 설정 (0.01 단위로 증가)
         self.next_print_thresholds = [self.initial_psnr + i * 0.01 for i in range(1, 21)]  # 최대 0.1 상승까지 출력
 
@@ -230,6 +236,11 @@ class BinaryHologramEnv(gym.Env):
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
+            print(self.state_record.shape)
+            print(self.state.shape)
+            print(self.observation.shape)
+            print(result_after.cpu().numpy().shape)
+            print(self.target_image_np.shape)
 
         print_t = time.time() - print_time
         print(f"Step: {self.steps:<6} | Time print: {print_t:.6f} seconds")

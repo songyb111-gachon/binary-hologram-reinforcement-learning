@@ -270,6 +270,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         # Pre-model output 계산
         pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소
+        print(pre_model_output.shape)
+        cropped_pre_model_output = pre_model_output[:, crop_margin:-crop_margin, crop_margin:-crop_margin]
+        print(cropped_pre_model_output.shape)
 
         # 초기화: 특정 범위 값의 픽셀 개수와 PSNR 개선량 저장
         bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
@@ -301,8 +304,8 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
         # 각 범위 값의 픽셀 개수 계산
         for i in range(len(output_bins) - 1):
             bin_counts[i] = np.logical_and(
-                pre_model_output >= output_bins[i],
-                pre_model_output < output_bins[i + 1]
+                cropped_pre_model_output >= output_bins[i],
+                cropped_pre_model_output < output_bins[i + 1]
             ).sum()
 
         # 다음 출력 기준 PSNR 값 리스트 설정
