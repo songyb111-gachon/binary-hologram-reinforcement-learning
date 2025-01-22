@@ -224,7 +224,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         # 64픽셀 크롭 적용
         cropped_state = current_state[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
-        cropped_target_image = target_image[crop_margin:-crop_margin, crop_margin:-crop_margin]
+        cropped_target_image = target_image[:, crop_margin:-crop_margin, crop_margin:-crop_margin]
         cropped_target_image_cuda = torch.tensor(cropped_target_image, dtype=torch.float32).cuda()
 
         initial_psnr = env.initial_psnr  # 초기 PSNR
