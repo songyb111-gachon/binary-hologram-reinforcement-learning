@@ -97,7 +97,7 @@ class BinaryHologramEnv(gym.Env):
         self.cropped_target_image_np = None
         self.cropped_target_image_cuda = None
 
-    def reset(self, seed=None, options=None, z=2e-3, pixel_pitch=7.56e-6, crop_margin=128):
+    def reset(self, seed=None, options=None, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
         # CUDA 캐시 메모리 정리
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
@@ -141,9 +141,9 @@ class BinaryHologramEnv(gym.Env):
         print(self.state.shape)
         print(self.target_image.shape)
         print(self.target_image_np.shape)
-        self.cropped_state = self.state[:, :, :-crop_margin, :-crop_margin]
+        self.cropped_state = self.state[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
         print(self.cropped_state.shape)
-        self.cropped_target_image_np = self.target_image_np[:, :, :-crop_margin, :-crop_margin]
+        self.cropped_target_image_np = self.target_image_np[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
         print(self.cropped_target_image_np.shape)
         self.cropped_target_image_cuda = torch.tensor(self.cropped_target_image_np, dtype=torch.float32).cuda()
         print(self.cropped_target_image_cuda.shape)
