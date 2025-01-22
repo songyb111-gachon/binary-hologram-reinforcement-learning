@@ -218,20 +218,17 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         total_start_time = time.time()
 
-        target_image = next(iter(valid_loader))
-
         current_state = obs["state"]
+        target_image = obs["target_image"]
         target_image_cuda = torch.tensor(target_image, dtype=torch.float32).cuda()
-
-        crop = torchvision.transforms.CenterCrop(1024 - 128)
 
         print(current_state.shape)
         print(target_image.shape)
         print(target_image_cuda.shape)
         # 64픽셀 크롭 적용
-        cropped_state = crop(current_state)
+        cropped_state = current_state[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
         print(cropped_state.shape)
-        cropped_target_image = crop(target_image)
+        cropped_target_image = target_image[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
         print(cropped_target_image.shape)
         cropped_target_image_cuda = torch.tensor(cropped_target_image, dtype=torch.float32).cuda()
         print(cropped_target_image_cuda.shape)
