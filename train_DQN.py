@@ -37,7 +37,7 @@ from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
 
-from debug_env import BinaryHologramEnv
+from env import BinaryHologramEnv
 
 IPS = 256  #이미지 픽셀 사이즈
 CH = 8  #채널
