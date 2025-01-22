@@ -138,13 +138,15 @@ class BinaryHologramEnv(gym.Env):
         self.state_record = np.zeros_like(self.state)  # 플립 횟수를 저장하기 위한 배열 초기화
 
         # 64픽셀 크롭 적용
-        print(0)
-        self.cropped_state = self.state[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
-        print(1)
-        self.cropped_target_image_np = self.target_image_np[:, crop_margin:-crop_margin, crop_margin:-crop_margin]
-        print(2)
+        print(self.state.shape)
+        print(self.target_image.shape)
+        print(self.target_image_np.shape)
+        self.cropped_state = self.state[:, :, :-crop_margin, :-crop_margin]
+        print(self.cropped_state.shape)
+        self.cropped_target_image_np = self.target_image_np[:, :-crop_margin, :-crop_margin]
+        print(self.cropped_target_image_np.shape)
         self.cropped_target_image_cuda = torch.tensor(self.cropped_target_image_np, dtype=torch.float32).cuda()
-        print(3)
+        print(self.cropped_target_image_cuda.shape)
 
         meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
         rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
