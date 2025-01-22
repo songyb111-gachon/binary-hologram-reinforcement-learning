@@ -203,7 +203,7 @@ class Dataset512(Dataset):
 import numpy as np
 from collections import defaultdict
 
-def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_margin=128):
+def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
     db_num = 0
     max_datasets = 10  # 최대 데이터셋 처리 개수
     output_bins = np.linspace(0, 1.0, 11)  # pre-model output 값의 범위 설정
@@ -222,10 +222,16 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
         target_image = obs["target_image"]
         target_image_cuda = torch.tensor(target_image, dtype=torch.float32).cuda()
 
+        print(current_state.shape)
+        print(target_image.shape)
+        print(target_image_cuda.shape)
         # 64픽셀 크롭 적용
         cropped_state = current_state[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
-        cropped_target_image = target_image[:, crop_margin:-crop_margin, crop_margin:-crop_margin]
+        print(cropped_state.shape)
+        cropped_target_image = target_image[:, :, crop_margin:-crop_margin, crop_margin:-crop_margin]
+        print(cropped_target_image.shape)
         cropped_target_image_cuda = torch.tensor(cropped_target_image, dtype=torch.float32).cuda()
+        print(cropped_target_image_cuda.shape)
 
         initial_psnr = env.initial_psnr  # 초기 PSNR
         previous_psnr = initial_psnr
