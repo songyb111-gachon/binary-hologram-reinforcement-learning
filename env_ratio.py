@@ -44,8 +44,8 @@ class BinaryHologramEnv(gym.Env):
             "state_record": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "state": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.int8),
             "pre_model": spaces.Box(low=0, high=1, shape=(1, CH, IPS, IPS), dtype=np.float32),
-            "recon_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
-            "target_image": spaces.Box(low=0, high=1, shape=(1, IPS, IPS), dtype=np.float32),
+            "recon_image": spaces.Box(low=0, high=1, shape=(1, 1, IPS, IPS), dtype=np.float32),
+            "target_image": spaces.Box(low=0, high=1, shape=(1, 1, IPS, IPS), dtype=np.float32),
         })
 
         # 행동 공간: 픽셀 하나를 선택하는 인덱스 (CH * IPS * IPS)
