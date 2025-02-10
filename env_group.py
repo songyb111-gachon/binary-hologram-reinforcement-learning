@@ -88,9 +88,10 @@ class BinaryHologramEnv(gym.Env):
         self.episode_num_count = 0
 
     def _calculate_pixel_importance(self, binary, z):
-        """랜덤으로 1만 개 픽셀 플립 후 PSNR 변화량을 순위화"""
+        """랜덤으로 1만 개 픽셀 플립 후 PSNR 변화량을 순위화 및 양수 변화량 총합 계산"""
         num_samples = 10000
         psnr_changes = []
+        positive_psnr_sum = 0  # 양수 PSNR 변화량 총합 초기화
 
         for _ in range(num_samples):
             random_action = np.random.randint(self.num_pixels)
@@ -110,6 +111,10 @@ class BinaryHologramEnv(gym.Env):
             psnr_change = psnr_temp - self.initial_psnr
             psnr_changes.append(psnr_change)
 
+            # 양수 PSNR 변화량만 누적
+            if psnr_change > 0:
+                positive_psnr_sum += psnr_change
+
             # 상태 롤백
             self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
 
@@ -121,7 +126,7 @@ class BinaryHologramEnv(gym.Env):
             # 가장 낮은 PSNR 변화량: -1, 가장 높은 PSNR 변화량: 1로 매핑
             importance_ranks[idx] = -1 + (2 * rank / (num_samples - 1))
 
-        return psnr_changes, importance_ranks
+        return psnr_changes, importance_ranks, positive_psnr_sum
 
     def reset(self, seed=None, options=None, z=2e-3):
         torch.cuda.empty_cache()
@@ -168,13 +173,16 @@ class BinaryHologramEnv(gym.Env):
         self.initial_psnr = tt.relativeLoss(result, self.target_image, tm.get_PSNR)  # 초기 PSNR 저장
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
-        # 1만 개 픽셀 플립 후 PSNR 변화량 순위화
+        # 1만 개 픽셀 플립 후 PSNR 변화량 순위화 및 양수 변화량 총합 계산
         rw_start_time = time.time()
-        self.psnr_change_list, self.importance_ranks = self._calculate_pixel_importance(binary, z)
+        self.psnr_change_list, self.importance_ranks, positive_psnr_sum = self._calculate_pixel_importance(binary, z)
         data_processing_time = time.time() - rw_start_time
         print(
             f"\nTime taken for psnr_change_list: {data_processing_time:.2f} seconds"
         )
+
+        self.T_PSNR_DIFF = positive_psnr_sum / 4
+        print(f"\033[94m[Dynamic Threshold] T_PSNR_DIFF set to: {self.T_PSNR_DIFF:.6f}\033[0m")
 
         obs = {"state_record": self.state_record,
                "state": self.state,
