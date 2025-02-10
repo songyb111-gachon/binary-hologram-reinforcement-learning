@@ -169,7 +169,12 @@ class BinaryHologramEnv(gym.Env):
         self.previous_psnr = self.initial_psnr # 초기 PSNR 저장
 
         # 1만 개 픽셀 플립 후 PSNR 변화량 순위화
+        rw_start_time = time.time()
         self.psnr_change_list, self.importance_ranks = self._calculate_pixel_importance(binary, z)
+        data_processing_time = time.time() - rw_start_time
+        print(
+            f"\nTime taken for psnr_change_list: {data_processing_time:.2f} seconds"
+        )
 
         obs = {"state_record": self.state_record,
                "state": self.state,
