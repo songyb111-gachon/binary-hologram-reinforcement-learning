@@ -15,7 +15,7 @@ x_vals = np.linspace(0, 1, 100)
 reward_vals = reward_function(x_vals)
 
 # Target points (with fractions for x-axis)
-target_points = [(1/8, -300), (1/4, -100), (1/2, 100), (1, 300)]
+target_points = [(4000, -300), (2500, -100), (1000, 100), (1, 300)]
 
 # 그래프 그리기
 plt.figure(figsize=(8, 6))

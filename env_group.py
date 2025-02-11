@@ -123,8 +123,8 @@ class BinaryHologramEnv(gym.Env):
         importance_ranks = np.zeros(num_samples)
 
         for rank, idx in enumerate(sorted_indices):
-            # 가장 낮은 PSNR 변화량: -1, 가장 높은 PSNR 변화량: 1로 매핑
-            importance_ranks[idx] = -1 + (2 * rank / (num_samples - 1))
+            # 가장 낮은 PSNR 변화량: -4, 가장 높은 PSNR 변화량: 1로 매핑
+            importance_ranks[idx] = -4 + (5 * rank / (num_samples - 1))
 
         return psnr_changes, importance_ranks, positive_psnr_sum
 
@@ -277,6 +277,13 @@ class BinaryHologramEnv(gym.Env):
             )
             self.psnr_sustained_steps += 1
 
+            if self.psnr_sustained_steps >= self.T_steps and psnr_diff >= self.T_PSNR_DIFF:  # 성공 에피소드 조건
+                # 스텝에 따른 추가 보상 계산 (선형 보상)
+                # 스텝이 1000일 때: 100, 2500일 때: -100
+                m = -200.0 / 1500.0  # 기울기 계산: (-100 - 100) / (2500 - 1000)
+                additional_reward = 100 + m * (self.steps - 1000)
+                reward += additional_reward
+
         if self.steps >= self.max_steps:
             # 현재 PSNR 값이 출력 기준을 충족했는지 확인
             data_processing_time = time.time() - self.total_start_time
@@ -287,6 +294,11 @@ class BinaryHologramEnv(gym.Env):
                 f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
                 f"\nTime taken for this data: {data_processing_time:.2f} seconds"
             )
+            # 스텝에 따른 추가 보상 계산 (선형 보상)
+            # 스텝이 1000일 때: 100, 2500일 때: -100
+            m = -200.0 / 1500.0  # 기울기 계산: (-100 - 100) / (2500 - 1000)
+            additional_reward = 100 + m * (self.steps - 1000)
+            reward += additional_reward
 
         # 성공 종료 조건: PSNR >= T_PSNR 또는 PSNR_DIFF >= T_PSNR_DIFF
         terminated = self.steps >= self.max_steps or self.psnr_sustained_steps >= self.T_steps
