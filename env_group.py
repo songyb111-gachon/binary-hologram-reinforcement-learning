@@ -118,13 +118,27 @@ class BinaryHologramEnv(gym.Env):
             # 상태 롤백
             self.state[0, channel, row, col] = 1 - self.state[0, channel, row, col]
 
-        # PSNR 변화량을 기준으로 순위 매기기
-        sorted_indices = np.argsort(psnr_changes)  # 오름차순 정렬
+        step_poly = np.array([10000, 9000, 8000, 5000, 2500, 1])
+        rewards_poly = np.array([-0.5, -0.48, -0.45, -0.35, 0, 1])
+        degree_poly = len(step_poly) - 1  # degree = 5
+        coefficients_poly = np.polyfit(step_poly, rewards_poly, degree_poly)
+        poly_reward = np.poly1d(coefficients_poly)
+
+        # 기본값(내장 문자열 표현)으로 다항식 보상 함수 출력
+        print("Polynomial Reward Function Equation:")
+        print(poly_reward)
+
+        # PSNR 변화량을 기준으로 순위 매기기 (오름차순 정렬)
+        sorted_indices = np.argsort(psnr_changes)
         importance_ranks = np.zeros(num_samples)
 
         for rank, idx in enumerate(sorted_indices):
-            # 가장 낮은 PSNR 변화량: -4, 가장 높은 PSNR 변화량: 1로 매핑
-            importance_ranks[idx] = -4 + (5 * rank / (num_samples - 1))
+            # 순위(rank)를 [10000, 1] 범위의 x값으로 선형 변환
+            # rank = 0  -> x_val = 10000
+            # rank = num_samples-1 -> x_val = 1
+            x_val = 10000 - (10000 - 1) * (rank / (num_samples - 1))
+            # 다항식 보상 함수를 사용하여 보상값 계산
+            importance_ranks[idx] = poly_reward(x_val)
 
         return psnr_changes, importance_ranks, positive_psnr_sum
 
