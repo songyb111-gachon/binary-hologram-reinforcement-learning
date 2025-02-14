@@ -11,6 +11,22 @@ log_file = setup_logger()
 print("이 메시지는 콘솔과 파일에 동시에 기록됩니다.")
 logging.info("이 메시지도 로그에 기록됩니다.")
 
+import random
+import numpy as np
+import torch
+
+seed = 6  # 원하는 시드값으로 변경
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # 여러 GPU를 사용하는 경우
+
+# 추가: 재현성을 위해
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 import os
 import glob
 import shutil
@@ -41,9 +57,10 @@ import matplotlib.pyplot as plt
 
 from env_1024_24_128 import BinaryHologramEnv
 
-IPS = 1024  #이미지 픽셀 사이즈
-CH = 24  #채널
-RW = 800  #보상
+IPS = 1024  # 이미지 픽셀 사이즈
+CH = 24  # 채널
+RW = 800  # 보상
+
 
 class BinaryNet(nn.Module):
     def __init__(self, num_hologram, final='Sigmoid', in_planes=3,
@@ -171,13 +188,14 @@ test = torch.randn(1, 3, IPS, IPS).cuda()
 out = model(test)
 print(out.shape)
 
+
 class Dataset512(Dataset):
     def __init__(self, target_dir, meta, transform=None, isTrain=True, padding=0):
         self.target_dir = target_dir
         self.transform = transform
         self.meta = meta
         self.isTrain = isTrain
-        self.target_list = sorted(glob.glob(target_dir+'*.png'))
+        self.target_list = sorted(glob.glob(target_dir + '*.png'))
         self.center_crop = torchvision.transforms.CenterCrop(IPS)
         self.random_crop = torchvision.transforms.RandomCrop((IPS, IPS))
         self.padding = padding
@@ -193,21 +211,25 @@ class Dataset512(Dataset):
             target = torchvision.transforms.Resize(IPS)(target)
         if self.isTrain:
             target = self.random_crop(target)
-            target = torchvision.transforms.functional.pad(target, (self.padding, self.padding, self.padding, self.padding))
+            target = torchvision.transforms.functional.pad(target,
+                                                           (self.padding, self.padding, self.padding, self.padding))
         else:
             target = self.center_crop(target)
-            target = torchvision.transforms.functional.pad(target, (self.padding, self.padding, self.padding, self.padding))
+            target = torchvision.transforms.functional.pad(target,
+                                                           (self.padding, self.padding, self.padding, self.padding))
         # 데이터와 파일 경로를 함께 반환
         return target, self.target_list[idx]
 
+
 import numpy as np
 from collections import defaultdict
+
 
 def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
     db_num = 0
     max_datasets = 10  # 최대 데이터셋 처리 개수
     output_bins = np.round(np.linspace(0, 1.0, 11), decimals=10)
-    print(output_bins) # pre-model output 값의 범위 설정
+    print(output_bins)  # pre-model output 값의 범위 설정
 
     while db_num <= max_datasets:
         try:
@@ -319,9 +341,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                 print("e")
                 print(output_bins[i])
 
-        # 다음 출력 기준 PSNR 값 리스트 설정
-        next_print_thresholds = [initial_psnr + i * 0.1 for i in range(1, 101)]  # 최대 10.0 상승까지 출력
-
         print(f"Starting pixel flip optimization for file {file_name}.png with initial PSNR: {initial_psnr:.6f}")
 
         # 픽셀 크기 정보 가져오기
@@ -346,9 +365,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                 red_after = tt.Tensor(red_after, meta=rmeta)
                 rsim_after = tt.simulate(red_after, z).abs() ** 2
                 rmean_after = torch.mean(rsim_after, dim=1, keepdim=True)
-                rgb = torch.cat([rmean_after, gmean, bmean], dim=1)
-                rgb = tt.Tensor(rgb, meta=meta)
-                psnr_after = tt.relativeLoss(rgb, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+                rgb_after = torch.cat([rmean_after, gmean, bmean], dim=1)
+                rgb_after = tt.Tensor(rgb_after, meta=meta)
+                psnr_after = tt.relativeLoss(rgb_after, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
 
             elif 8 <= channel < 16:
                 # Green 채널 범위일 때, gmean만 갱신
@@ -356,9 +375,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                 green_after = tt.Tensor(green_after, meta=gmeta)
                 gsim_after = tt.simulate(green_after, z).abs() ** 2
                 gmean_after = torch.mean(gsim_after, dim=1, keepdim=True)
-                rgb = torch.cat([rmean, gmean_after, bmean], dim=1)
-                rgb = tt.Tensor(rgb, meta=meta)
-                psnr_after = tt.relativeLoss(rgb, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+                rgb_after = torch.cat([rmean, gmean_after, bmean], dim=1)
+                rgb_after = tt.Tensor(rgb_after, meta=meta)
+                psnr_after = tt.relativeLoss(rgb_after, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
 
             elif 16 <= channel:
                 # Blue 채널 범위일 때, bmean만 갱신
@@ -366,53 +385,15 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                 blue_after = tt.Tensor(blue_after, meta=bmeta)
                 bsim_after = tt.simulate(blue_after, z).abs() ** 2
                 bmean_after = torch.mean(bsim_after, dim=1, keepdim=True)
-                rgb = torch.cat([rmean, gmean, bmean_after], dim=1)
-                rgb = tt.Tensor(rgb, meta=meta)
-                psnr_after = tt.relativeLoss(rgb, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+                rgb_after = torch.cat([rmean, gmean, bmean_after], dim=1)
+                rgb_after = tt.Tensor(rgb_after, meta=meta)
+                psnr_after = tt.relativeLoss(rgb_after, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+
+            cropped_state[0, channel, row, col] = 1 - cropped_state[0, channel, row, col]
 
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
                 flip_count += 1
-
-                if channel < 8:
-                    rmean = rmean_after
-                elif 8 <= channel < 16:
-                    gmean = gmean_after
-                elif 16 <= channel:
-                    bmean = bmean_after
-
-                # 현재 PSNR 값이 출력 기준을 충족했는지 확인
-                while next_print_thresholds and psnr_after >= next_print_thresholds[0]:
-                    threshold = next_print_thresholds.pop(0)
-                    psnr_change = psnr_after - previous_psnr
-                    psnr_diff = psnr_after - initial_psnr
-                    success_ratio = flip_count / steps
-                    data_processing_time = time.time() - total_start_time
-                    print(
-                        f"Step: {steps}"
-                        f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_change:.6f} | Diff: {psnr_diff:.6f}"
-                        f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
-                        f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                        f"\nTime taken for this data: {data_processing_time:.2f} seconds"
-                    )
-                    total_improved_pixels = sum(improved_bin_counts.values())
-
-                    for i in range(len(output_bins) - 1):
-                        total_count = bin_counts[i]
-                        improved_count = improved_bin_counts[i]
-                        improved_ratio = improved_count / total_count if total_count > 0 else 0
-                        range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
-                        total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
-                        avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
-
-                        print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
-                              f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
-                              f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
-                              f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
-                              f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
-                              f"Average PSNR Improvement = {avg_psnr_improvement:.8f}")
-
-                    print("\n")
 
                 # 플립 성공 픽셀의 pre-model output 값 확인
                 pre_value = cropped_pre_model_output[channel, row, col]
@@ -421,24 +402,47 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                 for i in range(len(output_bins) - 1):
                     if i == len(output_bins) - 1:  # 마지막 범위
                         if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
-                            bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                             if psnr_after > previous_psnr:
                                 improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
                                 psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
                             break
                     else:
                         if output_bins[i] <= pre_value < output_bins[i + 1]:
-                            bin_counts[i] += 1  # 해당 범위 픽셀 수 증가
                             if psnr_after > previous_psnr:
                                 improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
                                 psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
                             break
 
-                previous_psnr = psnr_after
+            if steps % 1000000 == 0:
+                # 성공 비율 계산
+                success_ratio = flip_count / steps if steps > 0 else 0
 
-            else:
-                # PSNR이 개선되지 않았으면 플립 롤백
-                cropped_state[0, channel, row, col] = 1 - cropped_state[0, channel, row, col]
+                # 최종 결과 출력
+                psnr_diff = psnr_after - initial_psnr
+                data_processing_time = time.time() - total_start_time
+                print(
+                    f"Step: {steps}"
+                    f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_diff:.6f}"
+                    f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
+                    f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
+                    f"\nTime taken for this data: {data_processing_time:.2f} seconds")
+
+                total_improved_pixels = sum(improved_bin_counts.values())
+
+                for i in range(len(output_bins) - 1):
+                    total_count = bin_counts[i]
+                    improved_count = improved_bin_counts[i]
+                    improved_ratio = improved_count / total_count if total_count > 0 else 0
+                    range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
+                    total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
+                    avg_psnr_improvement = total_psnr_improvement / improved_count if improved_count > 0 else 0
+
+                    print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
+                          f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
+                          f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
+                          f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
+                          f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "
+                          f"Average PSNR Improvement = {avg_psnr_improvement:.8f}")
 
         # 성공 비율 계산
         success_ratio = flip_count / steps if steps > 0 else 0
@@ -487,23 +491,25 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         print("\n")
 
+
 batch_size = 1
 #target_dir = 'dataset1/'
 target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
-valid_dir = 'valid/'
-#valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
-meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(7.56e-6, 7.56e-6)}
+#valid_dir = '834p/'
+valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/0896'
+meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (7.56e-6, 7.56e-6)}
 padding = 0
 
 # Dataset512 클래스 사용
-train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) #센터크롭
-#train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=True, padding=padding) #랜덤크롭
+# train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=True, padding=padding) #랜덤크롭
+train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) # 센터크롭
 valid_dataset = Dataset512(target_dir=valid_dir, meta=meta, isTrain=False, padding=padding)
 
 # DataLoader 생성
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-#train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+# train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+# valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True)
 
 # BinaryNet 모델 로드
 model = BinaryNet(num_hologram=CH, in_planes=3, convReLU=False, convBN=False,
