@@ -25,7 +25,6 @@ from env_1024_24_128 import BinaryHologramEnv
 
 IPS = 1024  #이미지 픽셀 사이즈
 CH = 24  #채널
-RW = 800  #보상
 
 class BinaryNet(nn.Module):
     def __init__(self, num_hologram, final='Sigmoid', in_planes=3,
