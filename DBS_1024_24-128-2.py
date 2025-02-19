@@ -8,12 +8,18 @@ log_file = setup_logger()
 print("이 메시지는 콘솔과 파일에 동시에 기록됩니다.")
 logging.info("이 메시지도 로그에 기록됩니다.")
 
+import random
+import numpy as np
+import torch
+
 import os
 import glob
 import time
+import warnings
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim
 from torch.utils.data import Dataset, DataLoader
 
@@ -21,10 +27,11 @@ import torchvision
 
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
-from env_1024_24_128 import BinaryHologramEnv
 
 IPS = 1024  #이미지 픽셀 사이즈
 CH = 24  #채널
+
+warnings.filterwarnings('ignore')
 
 class BinaryNet(nn.Module):
     def __init__(self, num_hologram, final='Sigmoid', in_planes=3,
@@ -184,15 +191,17 @@ class Dataset512(Dataset):
 import numpy as np
 from collections import defaultdict
 
-def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
+def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
     db_num = 0
     max_datasets = 1  # 최대 데이터셋 처리 개수
     output_bins = np.round(np.linspace(0, 1.0, 11), decimals=10)
     print(output_bins) # pre-model output 값의 범위 설정
+    target_function = target_function
+    data_iter = iter(trainloader)
 
     while db_num <= max_datasets:
         try:
-            obs, info = env.reset()
+            target_image, current_file = next(data_iter)
             db_num += 1
         except Exception as e:
             print(f"An error occurred during reset: {e}")
@@ -200,9 +209,17 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         total_start_time = time.time()
 
-        current_state = obs["state"]
-        target_image = obs["target_image"]
-        target_image_cuda = torch.tensor(target_image, dtype=torch.float32).cuda()
+        target_image = target_image.cuda()
+        target_image_np = target_image.cpu().numpy()
+
+        with torch.no_grad():
+            model_output = target_function(target_image)
+        observation = model_output.cpu().numpy()  # (1, CH, IPS, IPS)
+        state = (observation >= 0.5).astype(np.int8)  # 초기 Binary state
+
+        current_state = state
+        target_image_cuda = target_image
+        target_image = target_image_np
 
         print(current_state.shape)
         print(target_image.shape)
@@ -214,12 +231,6 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
         print(cropped_target_image.shape)
         cropped_target_image_cuda = torch.tensor(cropped_target_image, dtype=torch.float32).cuda()
         print(cropped_target_image_cuda.shape)
-
-        initial_psnr = env.initial_psnr  # 초기 PSNR
-        previous_psnr = initial_psnr
-        steps = 0
-        flip_count = 0
-        psnr_after = 0
 
         meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (pixel_pitch, pixel_pitch)}
         rmeta = {'wl': (638e-9), 'dx': (pixel_pitch, pixel_pitch)}
@@ -250,8 +261,16 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
         rgb = torch.cat([rmean, gmean, bmean], dim=1)
         rgb = tt.Tensor(rgb, meta=meta)
 
+        # PSNR 계산
+        initial_psnr = tt.relativeLoss(rgb, cropped_target_image_cuda, tm.get_PSNR)  # 초기 PSNR 저장
+        previous_psnr = initial_psnr # 초기 PSNR 저장
+
+        steps = 0
+        flip_count = 0
+        psnr_after = 0
+
         # Pre-model output 계산
-        pre_model_output = obs["pre_model"].squeeze()  # 필요 시 차원 축소
+        pre_model_output = np.squeeze(observation, axis=0)
         print(pre_model_output.shape)
         cropped_pre_model_output = pre_model_output[:, crop_margin:-crop_margin, crop_margin:-crop_margin]
         print(cropped_pre_model_output.shape)
@@ -265,7 +284,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
         dbs_folder = "DBS"
         os.makedirs(dbs_folder, exist_ok=True)  # 폴더가 없으면 생성
 
-        a, imgname = next(iter(env.trainloader))
+        a, imgname = target_image, current_file
 
         # imgname에서 파일 이름 추출
         if isinstance(imgname, list) or isinstance(imgname, tuple):
@@ -472,14 +491,7 @@ model = BinaryNet(num_hologram=CH, in_planes=3, convReLU=False, convBN=False,
 model.load_state_dict(torch.load('result_v/2024-10-17 14_27_01.569309_1018_proposed_7.56e-6_24_0.002'))
 model.eval()
 
-# 환경 생성에 새로운 데이터 로더 적용
-env = BinaryHologramEnv(
+optimize_with_random_pixel_flips(
     target_function=model,
     trainloader=valid_loader,
-    max_steps=10000,
-    T_PSNR=30,
-    T_steps=1,
-    T_PSNR_DIFF=1 / 4,
 )
-
-optimize_with_random_pixel_flips(env)
