@@ -1,7 +1,4 @@
-import sys
 import logging
-from datetime import datetime
-import os
 from utils.logger import setup_logger
 
 # 로거 설정
@@ -11,56 +8,24 @@ log_file = setup_logger()
 print("이 메시지는 콘솔과 파일에 동시에 기록됩니다.")
 logging.info("이 메시지도 로그에 기록됩니다.")
 
-import random
-import numpy as np
-import torch
-
-seed = 6  # 원하는 시드값으로 변경
-random.seed(seed)
-np.random.seed(seed)
-torch.manual_seed(seed)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # 여러 GPU를 사용하는 경우
-
-# 추가: 재현성을 위해
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-
 import os
 import glob
-import shutil
-from datetime import datetime
 import time
-import warnings
-
-import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim
 from torch.utils.data import Dataset, DataLoader
 
 import torchvision
 
-import gymnasium as gym
-from gymnasium import spaces
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import BaseCallback, CallbackList
-
 import torchOptics.optics as tt
 import torchOptics.metrics as tm
-
-import matplotlib.pyplot as plt
-
 from env_1024_24_128 import BinaryHologramEnv
 
-IPS = 1024  # 이미지 픽셀 사이즈
-CH = 24  # 채널
-RW = 800  # 보상
-
+IPS = 1024  #이미지 픽셀 사이즈
+CH = 24  #채널
+RW = 800  #보상
 
 class BinaryNet(nn.Module):
     def __init__(self, num_hologram, final='Sigmoid', in_planes=3,
@@ -188,14 +153,13 @@ test = torch.randn(1, 3, IPS, IPS).cuda()
 out = model(test)
 print(out.shape)
 
-
 class Dataset512(Dataset):
     def __init__(self, target_dir, meta, transform=None, isTrain=True, padding=0):
         self.target_dir = target_dir
         self.transform = transform
         self.meta = meta
         self.isTrain = isTrain
-        self.target_list = sorted(glob.glob(target_dir + '*.png'))
+        self.target_list = sorted(glob.glob(target_dir+'*.png'))
         self.center_crop = torchvision.transforms.CenterCrop(IPS)
         self.random_crop = torchvision.transforms.RandomCrop((IPS, IPS))
         self.padding = padding
@@ -211,25 +175,21 @@ class Dataset512(Dataset):
             target = torchvision.transforms.Resize(IPS)(target)
         if self.isTrain:
             target = self.random_crop(target)
-            target = torchvision.transforms.functional.pad(target,
-                                                           (self.padding, self.padding, self.padding, self.padding))
+            target = torchvision.transforms.functional.pad(target, (self.padding, self.padding, self.padding, self.padding))
         else:
             target = self.center_crop(target)
-            target = torchvision.transforms.functional.pad(target,
-                                                           (self.padding, self.padding, self.padding, self.padding))
+            target = torchvision.transforms.functional.pad(target, (self.padding, self.padding, self.padding, self.padding))
         # 데이터와 파일 경로를 함께 반환
         return target, self.target_list[idx]
-
 
 import numpy as np
 from collections import defaultdict
 
-
 def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
     db_num = 0
-    max_datasets = 10  # 최대 데이터셋 처리 개수
+    max_datasets = 1  # 최대 데이터셋 처리 개수
     output_bins = np.round(np.linspace(0, 1.0, 11), decimals=10)
-    print(output_bins)  # pre-model output 값의 범위 설정
+    print(output_bins) # pre-model output 값의 범위 설정
 
     while db_num <= max_datasets:
         try:
@@ -400,7 +360,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
                 # 범위에 따른 카운트 증가
                 for i in range(len(output_bins) - 1):
-                    if i == len(output_bins) - 1:  # 마지막 범위
+                    if i == len(output_bins) - 2: # 마지막 범위
                         if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
                             if psnr_after > previous_psnr:
                                 improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
@@ -413,7 +373,7 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                                 psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
                             break
 
-            if steps % 1000000 == 0:
+            if steps % 5000 == 0:
                 # 성공 비율 계산
                 success_ratio = flip_count / steps if steps > 0 else 0
 
@@ -425,7 +385,9 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
                     f"\nPSNR Before: {previous_psnr:.6f} | PSNR After: {psnr_after:.6f} | Change: {psnr_diff:.6f}"
                     f"\nSuccess Ratio: {success_ratio:.6f} | Flip Count: {flip_count}"
                     f"\nFlip Pixel: Channel={channel}, Row={row}, Col={col}"
-                    f"\nTime taken for this data: {data_processing_time:.2f} seconds")
+                    f"\nTime taken for this data: {data_processing_time:.2f} seconds"
+                    f"\npre_value: {pre_value:.6f}"
+                )
 
                 total_improved_pixels = sum(improved_bin_counts.values())
 
@@ -491,25 +453,19 @@ def optimize_with_random_pixel_flips(env, z=2e-3, pixel_pitch=7.56e-6, crop_marg
 
         print("\n")
 
-
 batch_size = 1
-#target_dir = 'dataset1/'
 target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
-#valid_dir = '834p/'
-valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/0896'
-meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (7.56e-6, 7.56e-6)}
+valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/'
+meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(7.56e-6, 7.56e-6)}
 padding = 0
 
 # Dataset512 클래스 사용
-# train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=True, padding=padding) #랜덤크롭
-train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) # 센터크롭
+train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) #센터크롭
 valid_dataset = Dataset512(target_dir=valid_dir, meta=meta, isTrain=False, padding=padding)
 
 # DataLoader 생성
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-# train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-# valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=True)
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
 
 # BinaryNet 모델 로드
 model = BinaryNet(num_hologram=CH, in_planes=3, convReLU=False, convBN=False,
