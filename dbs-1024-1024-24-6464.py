@@ -279,7 +279,7 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
         bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
         improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
         psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
-
+        attempted_bin_count = defaultdict(int)
 
         # 저장 경로 설정
         dbs_folder = "DBS"
@@ -370,27 +370,29 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
 
             cropped_state[0, channel, row, col] = 1 - cropped_state[0, channel, row, col]
 
+            # 플립 성공 픽셀의 pre-model output 값 확인
+            pre_value = cropped_pre_model_output[channel, row, col]
+
+            # 범위에 따른 카운트 증가
+            for i in range(len(output_bins) - 1):
+                if i == len(output_bins) - 2:  # 마지막 범위
+                    if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
+                        attempted_bin_count[i] += 1
+                        if psnr_after > previous_psnr:
+                            improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
+                            psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+                        break
+                else:
+                    if output_bins[i] <= pre_value < output_bins[i + 1]:
+                        attempted_bin_count[i] += 1
+                        if psnr_after > previous_psnr:
+                            improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
+                            psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
+                        break
+
             # PSNR이 개선되었는지 확인
             if psnr_after > previous_psnr:
                 flip_count += 1
-
-                # 플립 성공 픽셀의 pre-model output 값 확인
-                pre_value = cropped_pre_model_output[channel, row, col]
-
-                # 범위에 따른 카운트 증가
-                for i in range(len(output_bins) - 1):
-                    if i == len(output_bins) - 2: # 마지막 범위
-                        if output_bins[i] <= pre_value <= output_bins[i + 1]:  # `1.0` 포함
-                            if psnr_after > previous_psnr:
-                                improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                                psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
-                            break
-                    else:
-                        if output_bins[i] <= pre_value < output_bins[i + 1]:
-                            if psnr_after > previous_psnr:
-                                improved_bin_counts[i] += 1  # 개선된 픽셀 수 증가
-                                psnr_improvements[i].append(psnr_after - previous_psnr)  # PSNR 개선량 저장
-                            break
 
             if steps % 5000 == 0:
                 # 성공 비율 계산
@@ -413,6 +415,8 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
                 for i in range(len(output_bins) - 1):
                     total_count = bin_counts[i]
                     improved_count = improved_bin_counts[i]
+                    attempted_count = attempted_bin_count[i]
+                    ratio = improved_count / attempted_count if attempted_count > 0 else 0
                     improved_ratio = improved_count / total_count if total_count > 0 else 0
                     range_improved_ratio = improved_count / total_improved_pixels if total_improved_pixels > 0 else 0
                     total_psnr_improvement = sum(psnr_improvements[i]) if improved_count > 0 else 0
@@ -420,6 +424,7 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
 
                     print(f"Range {output_bins[i]:.1f}-{output_bins[i + 1]:.1f}: "
                           f"Total Pixels = {total_count}, Improved Pixels = {improved_count}, "
+                          f"Attempted Pixels = {attempted_count}, Improvement Ratio = {ratio:.6f}, "
                           f"Improvement Ratio (in range) = {improved_ratio:.6f}, "
                           f"Improvement Ratio (to total improved) = {range_improved_ratio:.6f}, "
                           f"Total PSNR Improvement = {total_psnr_improvement:.6f}, "

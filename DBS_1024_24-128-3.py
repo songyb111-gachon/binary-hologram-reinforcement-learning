@@ -151,7 +151,6 @@ class BinaryNet(nn.Module):
         out = nn.Sigmoid()(out)
         return out
 
-
 model = BinaryNet(num_hologram=CH, in_planes=3, convReLU=False,
                   convBN=False, poolReLU=False, poolBN=False,
                   deconvReLU=False, deconvBN=False).cuda()
@@ -191,17 +190,32 @@ class Dataset512(Dataset):
 import numpy as np
 from collections import defaultdict
 
-def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
+def optimize_with_random_pixel_flips(z=2e-3, pixel_pitch=7.56e-6, crop_margin=64):
+    batch_size = 1
+    valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/0896'
+    meta = {'wl': (638e-9, 515e-9, 450e-9), 'dx': (7.56e-6, 7.56e-6)}
+    padding = 0
+
+    # Dataset512 클래스 사용
+    valid_dataset = Dataset512(target_dir=valid_dir, meta=meta, isTrain=False, padding=padding)
+
+    # DataLoader 생성
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
+
+    # BinaryNet 모델 로드
+    model = BinaryNet(num_hologram=CH, in_planes=3, convReLU=False, convBN=False,
+                      poolReLU=False, poolBN=False, deconvReLU=False, deconvBN=False).cuda()
+    model.load_state_dict(torch.load('result_v/2024-10-17 14_27_01.569309_1018_proposed_7.56e-6_24_0.002'))
+    model.eval()
+
     db_num = 0
     max_datasets = 1  # 최대 데이터셋 처리 개수
     output_bins = np.round(np.linspace(0, 1.0, 11), decimals=10)
     print(output_bins) # pre-model output 값의 범위 설정
-    target_function = target_function
-    data_iter = iter(trainloader)
 
     while db_num <= max_datasets:
         try:
-            target_image, current_file = next(data_iter)
+            target_image, current_file = next(iter(valid_loader))
             db_num += 1
         except Exception as e:
             print(f"An error occurred during reset: {e}")
@@ -212,9 +226,8 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
         target_image = target_image.cuda()
         target_image_np = target_image.cpu().numpy()
 
-        with torch.no_grad():
-            model_output = target_function(target_image)
-        observation = model_output.cpu().numpy()  # (1, CH, IPS, IPS)
+        model_output = model(target_image)
+        observation = model_output.detach().cpu().numpy()  # (1, CH, IPS, IPS)
         state = (observation >= 0.5).astype(np.int8)  # 초기 Binary state
 
         current_state = state
@@ -279,7 +292,6 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
         bin_counts = defaultdict(int)  # 각 범위에 해당하는 전체 픽셀 수
         improved_bin_counts = defaultdict(int)  # PSNR이 개선된 픽셀 수
         psnr_improvements = defaultdict(list)  # 각 범위에서 PSNR 개선량 저장
-
 
         # 저장 경로 설정
         dbs_folder = "DBS"
@@ -472,27 +484,5 @@ def optimize_with_random_pixel_flips(target_function, trainloader, z=2e-3, pixel
 
         print("\n")
 
-batch_size = 1
-target_dir = '/nfs/dataset/DIV2K/DIV2K_train_HR/DIV2K_train_HR/'
-valid_dir = '/nfs/dataset/DIV2K/DIV2K_valid_HR/DIV2K_valid_HR/0896'
-meta = {'wl' : (638e-9, 515e-9, 450e-9), 'dx':(7.56e-6, 7.56e-6)}
-padding = 0
-
-# Dataset512 클래스 사용
-train_dataset = Dataset512(target_dir=target_dir, meta=meta, isTrain=False, padding=padding) #센터크롭
-valid_dataset = Dataset512(target_dir=valid_dir, meta=meta, isTrain=False, padding=padding)
-
-# DataLoader 생성
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False)
-
-# BinaryNet 모델 로드
-model = BinaryNet(num_hologram=CH, in_planes=3, convReLU=False, convBN=False,
-                  poolReLU=False, poolBN=False, deconvReLU=False, deconvBN=False).cuda()
-model.load_state_dict(torch.load('result_v/2024-10-17 14_27_01.569309_1018_proposed_7.56e-6_24_0.002'))
-model.eval()
-
 optimize_with_random_pixel_flips(
-    target_function=model,
-    trainloader=valid_loader,
 )
