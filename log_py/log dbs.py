@@ -29,6 +29,10 @@ def plot_graph():
         header_match = re.search(r"episode_\d+", block)
         ep_id = header_match.group(0) if header_match else "Unknown Episode"
 
+        # 블럭 내에서 초기 PSNR 값 추출 (첫번째 발생하는 값 사용)
+        psnr_match = re.search(r"with initial PSNR:\s*([\d\.]+)", block)
+        initial_psnr = psnr_match.group(1) if psnr_match else "N/A"
+
         range_labels = []
         imp_ratios = []
 
@@ -58,7 +62,7 @@ def plot_graph():
         plt.bar(x, imp_ratios, width, color='skyblue', edgecolor='black')
         plt.xlabel("Range")
         plt.ylabel("Improvement Ratio")
-        plt.title(f"{ep_id} - Improvement Ratio per Range")
+        plt.title(f"{ep_id} (Initial PSNR: {initial_psnr}) - Improvement Ratio per Range")
         plt.xticks(x, range_labels, rotation=45)
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.tight_layout()
