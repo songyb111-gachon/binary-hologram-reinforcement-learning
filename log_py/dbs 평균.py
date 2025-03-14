@@ -51,6 +51,11 @@ def plot_graph():
     # 각 Range별 평균 Improvement Ratio 계산
     avg_ratios = [data_dict[r]["sum"] / data_dict[r]["count"] for r in sorted_ranges]
 
+    # 각 범위와 평균값을 출력
+    print("\nAverage Improvement Ratios per Range:")
+    for r, avg in zip(sorted_ranges, avg_ratios):
+        print(f"Range {r}: {avg:.4f}")
+
     # 막대그래프 생성
     x = np.arange(len(sorted_ranges))
     width = 0.35
@@ -59,7 +64,7 @@ def plot_graph():
     plt.bar(x, avg_ratios, width, label="Improvement Ratio")
     plt.xlabel("Range")
     plt.ylabel("Improvement Ratio")
-    plt.title("각 Range별 Improvement Ratio (전체 데이터 평균)")
+    plt.title("Average Improvement Ratio per Range (Average of 100 validation data)")
     plt.xticks(x, sorted_ranges, rotation=45)
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.7)
