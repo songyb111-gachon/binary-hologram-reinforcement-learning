@@ -85,11 +85,35 @@ def sort_results(*args):
     if order == "내림차순":
         sorted_results = sorted_results[::-1]
 
-    # 정렬된 결과를 출력
-    for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
-        avg_output_text.insert(tk.END,
-            f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, Initial PSNR: {avg_psnr:.6f}, "
-            f"평균 PSNR increase probability: {avg_inc:.6f}\n")
+    # 헤더 출력: 현재 정렬 기준과 정렬 순서를 맨 위에 표시
+    header_text = f"정렬 기준: {sort_option.get()} / 정렬 순서: {order_option.get()}\n\n"
+    avg_output_text.insert(tk.END, header_text)
+
+    # 정렬 기준에 따른 출력 순서 설정
+    if sort_key == "PSNR increase probability":
+        # 출력 순서: 파일명, 평균 PSNR increase probability, 평균 T_PSNR_DIFF, Initial PSNR
+        for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
+            avg_output_text.insert(tk.END,
+                f"{filename} 평균 PSNR increase probability: {avg_inc:.6f}, "
+                f"평균 T_PSNR_DIFF: {avg_threshold:.6f}, Initial PSNR: {avg_psnr:.6f}\n")
+    elif sort_key == "T_PSNR_DIFF":
+        # 출력 순서: 파일명, 평균 T_PSNR_DIFF, 평균 PSNR increase probability, Initial PSNR
+        for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
+            avg_output_text.insert(tk.END,
+                f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, "
+                f"평균 PSNR increase probability: {avg_inc:.6f}, Initial PSNR: {avg_psnr:.6f}\n")
+    elif sort_key == "Initial PSNR":
+        # 출력 순서: 파일명, Initial PSNR, 평균 T_PSNR_DIFF, 평균 PSNR increase probability
+        for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
+            avg_output_text.insert(tk.END,
+                f"{filename} Initial PSNR: {avg_psnr:.6f}, "
+                f"평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 PSNR increase probability: {avg_inc:.6f}\n")
+    else:
+        # 기본 출력 순서: 파일명, 평균 T_PSNR_DIFF, Initial PSNR, 평균 PSNR increase probability
+        for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
+            avg_output_text.insert(tk.END,
+                f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, "
+                f"Initial PSNR: {avg_psnr:.6f}, 평균 PSNR increase probability: {avg_inc:.6f}\n")
 
 # GUI 구성
 root = tk.Tk()
