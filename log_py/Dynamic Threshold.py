@@ -64,6 +64,11 @@ def process_log():
     else:
         sorted_results = results
 
+    # 사용자가 선택한 정렬 순서에 따라 (오름차순/내림차순) 정렬 결과 조정
+    order = order_option.get()
+    if order == "내림차순":
+        sorted_results = sorted_results[::-1]
+
     # 정렬된 결과를 출력
     for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
         avg_output_text.insert(tk.END,
@@ -82,14 +87,23 @@ input_label.pack(anchor="w", padx=5, pady=2)
 input_text = tk.Text(root, height=20, width=100)
 input_text.pack(padx=5, pady=2)
 
-# 정렬 기준 선택 OptionMenu 추가
+# 정렬 기준 및 순서 선택 OptionMenu 추가
+option_frame = tk.Frame(root)
+option_frame.pack(anchor="w", padx=5, pady=2)
+
+# 정렬 기준 선택
 sort_option = tk.StringVar(value="파일명")
-sort_frame = tk.Frame(root)
-sort_frame.pack(anchor="w", padx=5, pady=2)
-sort_label = tk.Label(sort_frame, text="정렬 기준:")
+sort_label = tk.Label(option_frame, text="정렬 기준:")
 sort_label.pack(side=tk.LEFT)
-sort_menu = tk.OptionMenu(sort_frame, sort_option, "파일명", "T_PSNR_DIFF", "Initial PSNR", "PSNR increase probability")
-sort_menu.pack(side=tk.LEFT)
+sort_menu = tk.OptionMenu(option_frame, sort_option, "파일명", "T_PSNR_DIFF", "Initial PSNR", "PSNR increase probability")
+sort_menu.pack(side=tk.LEFT, padx=(0, 10))
+
+# 정렬 순서 선택
+order_option = tk.StringVar(value="오름차순")
+order_label = tk.Label(option_frame, text="정렬 순서:")
+order_label.pack(side=tk.LEFT)
+order_menu = tk.OptionMenu(option_frame, order_option, "오름차순", "내림차순")
+order_menu.pack(side=tk.LEFT)
 
 # 처리 버튼
 process_button = tk.Button(root, text="로그 처리", command=process_log)
@@ -103,7 +117,7 @@ output_text = tk.Text(root, height=15, width=100)
 output_text.pack(padx=5, pady=2)
 
 # 파일별 평균 출력창
-avg_output_label = tk.Label(root, text="파일별 평균 값 (선택한 정렬 기준에 따름):")
+avg_output_label = tk.Label(root, text="파일별 평균 값 (선택한 정렬 기준과 순서에 따름):")
 avg_output_label.pack(anchor="w", padx=5, pady=2)
 
 avg_output_text = tk.Text(root, height=10, width=100)
