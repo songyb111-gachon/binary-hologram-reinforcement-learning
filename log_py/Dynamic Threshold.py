@@ -88,13 +88,13 @@ def sort_results(*args):
     # 정렬된 결과를 출력
     for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
         avg_output_text.insert(tk.END,
-            f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}, "
+            f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, Initial PSNR: {avg_psnr:.6f}, "
             f"평균 PSNR increase probability: {avg_inc:.6f}\n")
 
 # GUI 구성
 root = tk.Tk()
 root.title("로그 정보 및 평균 계산기")
-root.geometry("900x800")
+root.geometry("900x1200")
 root.configure(bg="#F0F0F0")
 
 # ttk 스타일 설정
