@@ -31,7 +31,7 @@ def process_log():
         output_text.insert(tk.END, f"T_PSNR_DIFF set to: {t}\n")
         output_text.insert(tk.END, f"PSNR increase probability: {inc}\n\n")
 
-    # 파일명별 T_PSNR_DIFF 및 Initial PSNR, PSNR increase probability 값을 모아서 평균 계산
+    # 파일명별 T_PSNR_DIFF, Initial PSNR, PSNR increase probability 값을 모아서 평균 계산
     groups_threshold = defaultdict(list)
     groups_psnr = defaultdict(list)
     groups_inc = defaultdict(list)
@@ -43,12 +43,33 @@ def process_log():
         except ValueError:
             continue
 
-    # 파일명의 숫자 부분을 기준으로 정렬 (예: "0001.png" → 1)
-    for filename in sorted(groups_threshold.keys(), key=lambda x: int(re.search(r'\d+', x).group())):
+    # 각 파일별 평균값 계산 (튜플: (파일명, avg_threshold, avg_psnr, avg_inc))
+    results = []
+    for filename in groups_threshold:
         avg_threshold = sum(groups_threshold[filename]) / len(groups_threshold[filename])
         avg_psnr = sum(groups_psnr[filename]) / len(groups_psnr[filename])
         avg_inc = sum(groups_inc[filename]) / len(groups_inc[filename])
-        avg_output_text.insert(tk.END, f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}, 평균 PSNR increase probability: {avg_inc:.6f}\n")
+        results.append((filename, avg_threshold, avg_psnr, avg_inc))
+
+    # 사용자가 선택한 정렬 기준에 따라 정렬
+    sort_key = sort_option.get()
+    if sort_key == "파일명":
+        sorted_results = sorted(results, key=lambda x: int(re.search(r'\d+', x[0]).group()))
+    elif sort_key == "T_PSNR_DIFF":
+        sorted_results = sorted(results, key=lambda x: x[1])
+    elif sort_key == "Initial PSNR":
+        sorted_results = sorted(results, key=lambda x: x[2])
+    elif sort_key == "PSNR increase probability":
+        sorted_results = sorted(results, key=lambda x: x[3])
+    else:
+        sorted_results = results
+
+    # 정렬된 결과를 출력
+    for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
+        avg_output_text.insert(tk.END,
+            f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}, "
+            f"평균 PSNR increase probability: {avg_inc:.6f}\n"
+        )
 
 # GUI 구성
 root = tk.Tk()
@@ -60,6 +81,15 @@ input_label.pack(anchor="w", padx=5, pady=2)
 
 input_text = tk.Text(root, height=20, width=100)
 input_text.pack(padx=5, pady=2)
+
+# 정렬 기준 선택 OptionMenu 추가
+sort_option = tk.StringVar(value="파일명")
+sort_frame = tk.Frame(root)
+sort_frame.pack(anchor="w", padx=5, pady=2)
+sort_label = tk.Label(sort_frame, text="정렬 기준:")
+sort_label.pack(side=tk.LEFT)
+sort_menu = tk.OptionMenu(sort_frame, sort_option, "파일명", "T_PSNR_DIFF", "Initial PSNR", "PSNR increase probability")
+sort_menu.pack(side=tk.LEFT)
 
 # 처리 버튼
 process_button = tk.Button(root, text="로그 처리", command=process_log)
@@ -73,7 +103,7 @@ output_text = tk.Text(root, height=15, width=100)
 output_text.pack(padx=5, pady=2)
 
 # 파일별 평균 출력창
-avg_output_label = tk.Label(root, text="파일별 평균 값 (숫자 순 정렬):")
+avg_output_label = tk.Label(root, text="파일별 평균 값 (선택한 정렬 기준에 따름):")
 avg_output_label.pack(anchor="w", padx=5, pady=2)
 
 avg_output_text = tk.Text(root, height=10, width=100)
