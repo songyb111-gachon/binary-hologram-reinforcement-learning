@@ -12,28 +12,34 @@ def process_log():
     threshold_pattern = re.compile(r"\[Dynamic Threshold\] T_PSNR_DIFF set to: ([0-9.]+)")
     # Initial PSNR 값 추출
     psnr_pattern = re.compile(r"Initial PSNR: ([0-9.]+)")
+    # PSNR increase probability 값 추출 (ANSI 컬러 코드 무시)
+    psnr_inc_pattern = re.compile(r"PSNR increase probability: ([0-9.]+)")
 
     files = file_pattern.findall(log_text)
     thresholds = threshold_pattern.findall(log_text)
     initial_psnrs = psnr_pattern.findall(log_text)
+    psnr_increases = psnr_inc_pattern.findall(log_text)
 
     # 기존 출력창 초기화
     output_text.delete("1.0", tk.END)
     avg_output_text.delete("1.0", tk.END)
 
-    # 추출한 파일명, Initial PSNR, 그리고 T_PSNR_DIFF 값을 출력
-    for f, psnr, t in zip(files, initial_psnrs, thresholds):
+    # 추출한 파일명, Initial PSNR, T_PSNR_DIFF, PSNR increase probability 값을 출력
+    for f, psnr, t, inc in zip(files, initial_psnrs, thresholds, psnr_increases):
         output_text.insert(tk.END, f"{f}\n")
         output_text.insert(tk.END, f"Initial PSNR: {psnr}\n")
-        output_text.insert(tk.END, f"T_PSNR_DIFF set to: {t}\n\n")
+        output_text.insert(tk.END, f"T_PSNR_DIFF set to: {t}\n")
+        output_text.insert(tk.END, f"PSNR increase probability: {inc}\n\n")
 
-    # 파일명별 T_PSNR_DIFF 및 Initial PSNR 값을 모아서 평균 계산
+    # 파일명별 T_PSNR_DIFF 및 Initial PSNR, PSNR increase probability 값을 모아서 평균 계산
     groups_threshold = defaultdict(list)
     groups_psnr = defaultdict(list)
-    for f, t, psnr in zip(files, thresholds, initial_psnrs):
+    groups_inc = defaultdict(list)
+    for f, t, psnr, inc in zip(files, thresholds, initial_psnrs, psnr_increases):
         try:
             groups_threshold[f].append(float(t))
             groups_psnr[f].append(float(psnr))
+            groups_inc[f].append(float(inc))
         except ValueError:
             continue
 
@@ -41,7 +47,8 @@ def process_log():
     for filename in sorted(groups_threshold.keys(), key=lambda x: int(re.search(r'\d+', x).group())):
         avg_threshold = sum(groups_threshold[filename]) / len(groups_threshold[filename])
         avg_psnr = sum(groups_psnr[filename]) / len(groups_psnr[filename])
-        avg_output_text.insert(tk.END, f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}\n")
+        avg_inc = sum(groups_inc[filename]) / len(groups_inc[filename])
+        avg_output_text.insert(tk.END, f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}, 평균 PSNR increase probability: {avg_inc:.6f}\n")
 
 # GUI 구성
 root = tk.Tk()
