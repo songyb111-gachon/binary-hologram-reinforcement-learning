@@ -1,11 +1,11 @@
 import tkinter as tk
+from tkinter import ttk
 import re
 from collections import defaultdict
 
 # 전역 변수에 추출된 결과를 저장합니다.
 # 각 결과는 (파일명, 평균 T_PSNR_DIFF, 평균 Initial PSNR, 평균 PSNR increase probability) 튜플입니다.
 extracted_results = []
-
 
 def process_log():
     global extracted_results
@@ -60,12 +60,10 @@ def process_log():
     extracted_results = results
     sort_results()
 
-
 def sort_results(*args):
     global extracted_results
     # 파일별 평균 결과창 초기화
     avg_output_text.delete("1.0", tk.END)
-
     if not extracted_results:
         return
 
@@ -90,60 +88,71 @@ def sort_results(*args):
     # 정렬된 결과를 출력
     for filename, avg_threshold, avg_psnr, avg_inc in sorted_results:
         avg_output_text.insert(tk.END,
-                               f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}, "
-                               f"평균 PSNR increase probability: {avg_inc:.6f}\n"
-                               )
-
+            f"{filename} 평균 T_PSNR_DIFF: {avg_threshold:.6f}, 평균 Initial PSNR: {avg_psnr:.6f}, "
+            f"평균 PSNR increase probability: {avg_inc:.6f}\n")
 
 # GUI 구성
 root = tk.Tk()
 root.title("로그 정보 및 평균 계산기")
+root.geometry("900x800")
+root.configure(bg="#F0F0F0")
 
-# 로그 입력창
-input_label = tk.Label(root, text="로그 입력:")
-input_label.pack(anchor="w", padx=5, pady=2)
+# ttk 스타일 설정
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("TLabel", font=("Helvetica", 11), background="#F0F0F0")
+style.configure("TButton", font=("Helvetica", 11), padding=5)
+style.configure("TFrame", background="#F0F0F0")
 
-input_text = tk.Text(root, height=20, width=100)
-input_text.pack(padx=5, pady=2)
+# 상단 헤더
+header = ttk.Label(root, text="로그 정보 및 평균 계산기", font=("Helvetica", 16, "bold"))
+header.pack(pady=10)
 
-# 정렬 기준 및 순서 선택 OptionMenu 추가
-option_frame = tk.Frame(root)
-option_frame.pack(anchor="w", padx=5, pady=2)
+# 로그 입력 영역
+input_frame = ttk.Frame(root)
+input_frame.pack(fill="both", padx=10, pady=5)
+input_label = ttk.Label(input_frame, text="로그 입력:")
+input_label.pack(anchor="w", pady=(0, 5))
+input_text = tk.Text(input_frame, height=10, width=100, font=("Helvetica", 10))
+input_text.pack(fill="both", padx=5, pady=5)
 
-# 정렬 기준 선택
+# 정렬 옵션 영역
+option_frame = ttk.Frame(root)
+option_frame.pack(fill="x", padx=10, pady=5)
 sort_option = tk.StringVar(value="파일명")
-sort_label = tk.Label(option_frame, text="정렬 기준:")
-sort_label.pack(side=tk.LEFT)
-sort_menu = tk.OptionMenu(option_frame, sort_option, "파일명", "T_PSNR_DIFF", "Initial PSNR", "PSNR increase probability")
-sort_menu.pack(side=tk.LEFT, padx=(0, 10))
-
-# 정렬 순서 선택
 order_option = tk.StringVar(value="오름차순")
-order_label = tk.Label(option_frame, text="정렬 순서:")
-order_label.pack(side=tk.LEFT)
-order_menu = tk.OptionMenu(option_frame, order_option, "오름차순", "내림차순")
-order_menu.pack(side=tk.LEFT)
-
-# 정렬 옵션 변경 시 자동으로 재정렬
+sort_label = ttk.Label(option_frame, text="정렬 기준:")
+sort_label.pack(side="left", padx=(0, 5))
+sort_menu = ttk.OptionMenu(option_frame, sort_option, "파일명", "파일명", "T_PSNR_DIFF", "Initial PSNR", "PSNR increase probability")
+sort_menu.pack(side="left", padx=(0, 15))
+order_label = ttk.Label(option_frame, text="정렬 순서:")
+order_label.pack(side="left", padx=(0, 5))
+order_menu = ttk.OptionMenu(option_frame, order_option, "오름차순", "오름차순", "내림차순")
+order_menu.pack(side="left", padx=(0, 15))
+# 옵션 변경 시 자동 재정렬
 sort_option.trace("w", sort_results)
 order_option.trace("w", sort_results)
 
-# 처리 버튼
-process_button = tk.Button(root, text="로그 처리", command=process_log)
+# 처리 버튼 영역
+button_frame = ttk.Frame(root)
+button_frame.pack(fill="x", padx=10, pady=5)
+process_button = ttk.Button(button_frame, text="로그 처리", command=process_log)
 process_button.pack(pady=5)
 
-# 추출된 정보 출력창
-output_label = tk.Label(root, text="추출 결과:")
-output_label.pack(anchor="w", padx=5, pady=2)
+# 추출 결과 영역
+output_frame = ttk.Frame(root)
+output_frame.pack(fill="both", padx=10, pady=5, expand=True)
+output_label = ttk.Label(output_frame, text="추출 결과:")
+output_label.pack(anchor="w", pady=(0, 5))
+output_text = tk.Text(output_frame, height=10, width=100, font=("Helvetica", 10))
+output_text.pack(fill="both", padx=5, pady=5, expand=True)
 
-output_text = tk.Text(root, height=15, width=100)
-output_text.pack(padx=5, pady=2)
-
-# 파일별 평균 출력창
-avg_output_label = tk.Label(root, text="파일별 평균 값 (선택한 정렬 기준과 순서에 따름):")
-avg_output_label.pack(anchor="w", padx=5, pady=2)
-
-avg_output_text = tk.Text(root, height=10, width=100)
-avg_output_text.pack(padx=5, pady=2)
+# 파일별 평균 결과 영역
+avg_frame = ttk.Frame(root)
+avg_frame.pack(fill="both", padx=10, pady=5, expand=True)
+avg_output_label = ttk.Label(avg_frame, text="파일별 평균 값 (선택한 정렬 기준과 순서에 따름):")
+avg_output_label.pack(anchor="w", pady=(0, 5))
+avg_output_text = tk.Text(avg_frame, height=8, width=100, font=("Helvetica", 10))
+avg_output_text.pack(fill="both", padx=5, pady=5, expand=True)
 
 root.mainloop()
