@@ -56,15 +56,18 @@ def process_log():
         avg_inc = sum(groups_inc[filename]) / len(groups_inc[filename])
         results.append((filename, avg_threshold, avg_psnr, avg_inc))
 
-    # 전역 변수에 저장 후 재정렬 함수 호출
+    # 전역 변수에 저장 후 정렬 결과 자동 갱신
     extracted_results = results
     sort_results()
 
 
-def sort_results():
+def sort_results(*args):
     global extracted_results
     # 파일별 평균 결과창 초기화
     avg_output_text.delete("1.0", tk.END)
+
+    if not extracted_results:
+        return
 
     # 사용자가 선택한 정렬 기준에 따라 정렬
     sort_key = sort_option.get()
@@ -121,9 +124,9 @@ order_label.pack(side=tk.LEFT)
 order_menu = tk.OptionMenu(option_frame, order_option, "오름차순", "내림차순")
 order_menu.pack(side=tk.LEFT)
 
-# 재정렬 버튼: 이미 처리된 결과를 선택한 기준으로 다시 정렬합니다.
-re_sort_button = tk.Button(root, text="재정렬", command=sort_results)
-re_sort_button.pack(pady=5)
+# 정렬 옵션 변경 시 자동으로 재정렬
+sort_option.trace("w", sort_results)
+order_option.trace("w", sort_results)
 
 # 처리 버튼
 process_button = tk.Button(root, text="로그 처리", command=process_log)
